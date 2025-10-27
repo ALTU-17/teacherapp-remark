@@ -1,0 +1,2 @@
+C:/Users/skalt/OneDrive/Desktop/flutter practice/teacherapp-remark/android/app/.cxx/RelWithDebInfo/3x6v6y1k/x86_64/CMakeFiles/edit_cache.dir
+C:/Users/skalt/OneDrive/Desktop/flutter practice/teacherapp-remark/android/app/.cxx/RelWithDebInfo/3x6v6y1k/x86_64/CMakeFiles/rebuild_cache.dir
