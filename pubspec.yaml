@@ -2,7 +2,7 @@ name: teacherapp
 description: "A new Flutter project."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
-publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+#publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 flutter_native_splash:
   color: "#F7CCA2"
   image: assets/logo.png # <--- Replace with your logo if you have one
@@ -20,6 +20,23 @@ flutter_native_splash:
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
+
+
+#  Create & lesson plan reminder > if teacher not sent lp plan for approval.
+#  self reminder > Teacher note end date + Lib book due date reminder + lesson plan reminder + Pending fee reminder (class teacher)
+
+#  Push Notifications.
+# UI done : Shows Birthday msg to teacher and student.(only )
+# UI done : Today tomorrow exam timetable show to all sub teachers.
+#  Personal remarks by principal : (show only for 24h)
+#  Access to teacher for question papers (all teachhers) (new Web view)
+
+# Shrayes :
+# A  list of students who absents on daily basis.
+# A  Sub wise class perforamce(bottom students highligthed)
+#  Class subsitution.
+
+
 version: 1.0.0+1
 
 environment:
@@ -55,7 +72,7 @@ dependencies:
   pretty_dio_logger: ^1.4.0
   hive_ce: ^2.11.3
   hive_ce_flutter: ^2.3.1
-
+  package_info_plus: ^8.1.1
 
   dio: ^5.9.0
   flutter_downloader: ^1.12.0
@@ -75,8 +92,13 @@ dependencies:
   permission_handler: ^12.0.1
   flutter_local_notifications: ^19.4.1
   url_launcher: ^6.3.2
+  crop_your_image: ^0.7.0
+
+
 dev_dependencies:
+
   flutter_native_splash: ^2.4.0
+
 
   flutter_test:
     sdk: flutter
@@ -142,4 +164,4 @@ flutter:
   # see https://flutter.dev/to/font-from-package
   assets:
     - assets/
-  
+    - assets/share.png

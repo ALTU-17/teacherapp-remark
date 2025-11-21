@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -176,50 +177,44 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
         isUploading.value = true;
 
         try {
-          // Get the same random number used for file upload
           final currentRandomNo = generateRandomNo();
           print('Using random number for save: $currentRandomNo');
 
-          bool allSuccess = true;
+          final strArray = selectedClass.value!
+              .map((e) => '${e.classId}^${e.sectionId}')
+              .toList();
+          final strArrayJson = jsonEncode(strArray);
+          print('Generated strArray: $strArrayJson');
 
           final smId = selectedSubject.value?.id ?? '';
           final subjectId = smId.isEmpty ? '0' : smId;
 
-          for (ClassInfo e in selectedClass.value ?? []) {
-            // Create the body with proper values and SAME random number
-            final x = CreateNoteBody(
-              academicYear: ref.read(academicYearProvider).requireValue.selectedYear,
-              shortName: ref.read(authProvider).requireValue.teacherVerification?.shortName,
-              randomNo: currentRandomNo,
-              teacherId: ref.read(authProvider).requireValue.regId,
-              description: fromKey.currentState?.value['description'],
-              strArray: "${e.classId}^${e.sectionId}",
-              loginType: 'T',
-              publish: 'N',
-              dailyNoteDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-              operation: 'create',
-              subjectId: subjectId,
-              filename: uploadedFiles.value, // List of filenames
-            );
+          final x = CreateNoteBody(
+            academicYear: ref.read(academicYearProvider).requireValue.selectedYear,
+            shortName: ref.read(authProvider).requireValue.teacherVerification?.shortName,
+            randomNo: currentRandomNo,
+            teacherId: ref.read(authProvider).requireValue.regId,
+            description: fromKey.currentState?.value['description'],
+            strArray: strArrayJson,
+            loginType: 'T',
+            publish: 'N',
+            dailyNoteDate: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+            operation: 'create',
+            subjectId: subjectId,
+            filename: uploadedFiles.value,
+          );
 
-            final response = await teacherNoteP.createTeacherNoteWithFiles(x);
+          // ✅ Single API call
+          final response = await teacherNoteP.createTeacherNoteWithFiles(x);
 
-            final success = response['status'] == true;
-
-            if (!success) {
-              allSuccess = false;
-            }
-          }
-
-          if (allSuccess) {
+          final success = response['status'] == true;
+          if (success) {
             _showSnackBar(context, 'Teacher note created successfully');
             fromKey.currentState?.reset();
-            // Clear states
             selectedClass.value = null;
             selectedSubject.value = null;
             selectAll.value = false;
             uploadedFiles.value = [];
-
             context.pop();
           } else {
             _showSnackBar(context, 'Failed to create teacher note');
@@ -427,15 +422,15 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
 
                   SizedBox(height: 10.h),
 
-                  // Date Picker
+                  // Date Picker (Non-editable, auto-filled with today's date)
                   const Text("*Date", style: TextStyle(fontWeight: FontWeight.bold)),
                   SizedBox(height: 5.h),
                   FormBuilderDateTimePicker(
                     name: 'dailynote_date',
+                    initialValue: DateTime.now(), // Always today's date
                     format: DateFormat('dd-MM-yyyy'),
                     inputType: InputType.date,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime.now(),
+                    enabled: false, // makes it non-editable
                     valueTransformer: (v) => v?.toString().split(" ").first,
                     validator: FormBuilderValidators.required(errorText: 'Date is mandatory'),
                     decoration: InputDecoration(
@@ -444,6 +439,7 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
                     ),
                   ),
+
 
                   SizedBox(height: 10.h),
 

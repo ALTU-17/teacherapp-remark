@@ -43,10 +43,11 @@ class EditRemark extends HookConsumerWidget {
     final uploading = useState<bool>(false);
     final isDownloading = useState<bool>(false);
 
-    // Track newly uploaded filenames in THIS editing session.
-    // IMPORTANT: we'll send only these names to updateRemark (or [""] if empty).
+    // Track newly uploaded files
+    final newlyUploadedFiles = useState<List<RemarkAttachment>>([]);
     final newlyUploadedFileNames = useState<List<String>>([]);
     final deletedExistingAttachments = useState<Set<String>>({});
+
     // Initialize notifications plugin
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -63,7 +64,17 @@ class EditRemark extends HookConsumerWidget {
       });
       return null;
     }, []);
-
+    Widget _getFileIcon(String fileName) {
+      if (fileName.contains('.jpg') || fileName.contains('.png')) {
+        return const Icon(Icons.image, color: Colors.redAccent, size: 24);
+      } else if (fileName.contains('.pdf')) {
+        return const Icon(Icons.picture_as_pdf, color: Colors.red, size: 24);
+      } else if (fileName.contains('.doc') || fileName.contains('.docx')) {
+        return const Icon(Icons.description, color: Colors.blue, size: 24);
+      } else {
+        return const Icon(Icons.insert_drive_file, color: Colors.blue, size: 24);
+      }
+    }
     String formatDateForApi(String date) {
       final parts = date.split('-');
       if (parts.length == 3 && parts[0].length == 4) {
@@ -220,12 +231,11 @@ class EditRemark extends HookConsumerWidget {
 
     // Advanced download functions
     Future<void> _handleDownload(RemarkAttachment attachment) async {
-
       try {
         if (attachment.fileSize == "0") {
           _showSnackBar(context, 'File not uploaded properly');
         } else {
-          String originalUrl = attachment.url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
+          String originalUrl = attachment.url;
           String reformattedDateStr;
           String baseDownloadUrl = originalUrl;
 
@@ -235,19 +245,14 @@ class EditRemark extends HookConsumerWidget {
           if (dateMatch != null && dateMatch.group(0) != null) {
             String extractedDate = dateMatch.group(0)!;
             try {
-              // Parse the extracted date (dd-MM-yyyy)
               DateFormat inputFormat = DateFormat('dd-MM-yyyy');
               DateTime parsedDate = inputFormat.parse(extractedDate);
               DateFormat outputFormat = DateFormat('yyyy-MM-dd');
-              reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
-              print('Original Date from URL: $extractedDate');
-              print('Reformatted Date: $reformattedDateStr');
+              reformattedDateStr = outputFormat.format(parsedDate);
               baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
-              print('Potentially modified base URL for download: $baseDownloadUrl');
-
             } catch (e) {
               print('Error parsing or formatting date from URL: $e');
-              reformattedDateStr = "N/A"; // Or handle as an error
+              reformattedDateStr = "N/A";
             }
           } else {
             print('Date not found in URL path or format is unexpected.');
@@ -270,7 +275,7 @@ class EditRemark extends HookConsumerWidget {
     }
 
     Future<void> onOpenAttachment(String url) async {
-      String originalUrl = url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
+      String originalUrl = url;
       String reformattedDateStr;
       String baseDownloadUrl = originalUrl;
 
@@ -280,19 +285,14 @@ class EditRemark extends HookConsumerWidget {
       if (dateMatch != null && dateMatch.group(0) != null) {
         String extractedDate = dateMatch.group(0)!;
         try {
-          // Parse the extracted date (dd-MM-yyyy)
           DateFormat inputFormat = DateFormat('dd-MM-yyyy');
           DateTime parsedDate = inputFormat.parse(extractedDate);
           DateFormat outputFormat = DateFormat('yyyy-MM-dd');
-          reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
-          print('Original Date from URL: $extractedDate');
-          print('Reformatted Date: $reformattedDateStr');
+          reformattedDateStr = outputFormat.format(parsedDate);
           baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
-          print('Potentially modified base URL for download: $baseDownloadUrl');
-
         } catch (e) {
           print('Error parsing or formatting date from URL: $e');
-          reformattedDateStr = "N/A"; // Or handle as an error
+          reformattedDateStr = "N/A";
         }
       } else {
         print('Date not found in URL path or format is unexpected.');
@@ -312,7 +312,7 @@ class EditRemark extends HookConsumerWidget {
       }
     }
 
-    // Attachments upload handler (now tracks newlyUploadedFileNames and does optimistic UI update)
+    // Attachments upload handler
     Future<void> uploadAttachment() async {
       final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
       if (result == null || result.files.isEmpty) return;
@@ -322,8 +322,8 @@ class EditRemark extends HookConsumerWidget {
       final auth = ref.read(authProvider).requireValue;
       bool allOk = true;
 
-      // Keep list of names uploaded in this call
       final List<String> uploadedThisCall = [];
+      final List<RemarkAttachment> tempNewAttachments = [];
 
       for (final file in result.files) {
         try {
@@ -333,18 +333,19 @@ class EditRemark extends HookConsumerWidget {
             filename: file.name,
             fileBytes: file.bytes!,
             uploadDate: formatDateForApi(_dateController.text),
-
           );
+
           if (uploadOk) {
             uploadedThisCall.add(file.name);
-            // Optimistic UI: add a local RemarkAttachment so the user sees it immediately.
-            // We try to reuse existing attachment.url if present, otherwise empty string.
-            final baseUrl = attachments.value.isNotEmpty ? attachments.value.first.url : '';
-            final sizeStr = file.size != null ? file.size.toString() : (file.bytes?.length.toString() ?? '0');
-            attachments.value = [
-              ...attachments.value,
-              RemarkAttachment(remarkId : remark.remarkId,imageName: file.name, fileSize: sizeStr, url: baseUrl)
-            ];
+
+            // Create new attachment for display
+            final newAttachment = RemarkAttachment(
+              remarkId: remark.remarkId,
+              imageName: file.name,
+              fileSize: file.size?.toString() ?? (file.bytes?.length.toString() ?? '0'),
+              url: "uploading", // Mark as uploading
+            );
+            tempNewAttachments.add(newAttachment);
           } else {
             allOk = false;
             _showSnackBar(context, 'Failed to upload ${file.name}');
@@ -358,111 +359,111 @@ class EditRemark extends HookConsumerWidget {
       uploading.value = false;
 
       if (uploadedThisCall.isNotEmpty) {
-        newlyUploadedFileNames.value = [
-          ...newlyUploadedFileNames.value,
-          ...uploadedThisCall
-        ];
-      }
+        // Update state for immediate UI display
+        newlyUploadedFiles.value = [...newlyUploadedFiles.value, ...tempNewAttachments];
+        newlyUploadedFileNames.value = [...newlyUploadedFileNames.value, ...uploadedThisCall];
 
-      if (allOk) {
-        // The server may take a moment to return uploaded files; poll a few times,
-        // but keep optimistic attachments already added so UI is responsive.
-        loadingAttachments.value = true;
-        List<RemarkAttachment> res = [];
-        bool foundUploaded = false;
-        for (int attempt = 0; attempt < 5; attempt++) {
+        _showSnackBar(context, 'Files uploaded successfully!');
+
+        // Refresh attachments from server after a delay
+        Future.delayed(const Duration(seconds: 1), () async {
           try {
-            await Future.delayed(Duration(milliseconds: attempt == 0 ? 500 : 1000));
-            res = await remarkService.getRemarkImages(
+            final res = await remarkService.getRemarkImages(
               remarkId: remark.remarkId,
               remarkDate: formatDateForApi(_dateController.text),
               shortName: auth.teacherVerification?.shortName ?? '',
             );
-            if (res.isNotEmpty && newlyUploadedFileNames.value.isNotEmpty) {
-              final returnedNames = res.map((r) => r.imageName).toSet();
-              final intersection = newlyUploadedFileNames.value.where((n) => returnedNames.contains(n));
-              if (intersection.isNotEmpty) {
-                foundUploaded = true;
-                break;
-              }
-            } else if (res.isNotEmpty && newlyUploadedFileNames.value.isEmpty) {
-              foundUploaded = true;
-              break;
-            }
+            attachments.value = res;
           } catch (e) {
-            print('Error while fetching attachments (attempt ${attempt + 1}): $e');
+            print('Error refreshing attachments: $e');
           }
-        }
+        });
+      }
+    }
+    final deletedAttachments = useState<Set<String>>({});
+    final existingAttachments = useState<List<RemarkAttachment>>([]);
 
-        // Final fetch attempt to ensure latest
-        // try {
-        //   res = await remarkService.getRemarkImages(
-        //     remarkId: remark.remarkId,
-        //     remarkDate: formatDateForApi(_dateController.text),
-        //     shortName: auth.teacherVerification?.shortName ?? '',
-        //   );
-        // } catch (e) {
-        //   print('Final fetch failed: $e');
-        // }
-        //
-        // // If server returned attachments, replace attachments.value with authoritative list.
-        // if (res.isNotEmpty) {
-        //   attachments.value = res;
-        // }
+    Future<void> deleteAttachment(RemarkAttachment attachment) async {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Delete?"),
+          content: Text("Are you sure to delete ${attachment.imageName}?"),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text("Cancel")
+            ),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text("Delete")
+            ),
+          ],
+        ),
+      );
 
-        loadingAttachments.value = false;
+      if (confirmed == true) {
+        final remarkService = ref.read(remarkServiceProvider);
+        final auth = ref.read(authProvider).requireValue;
 
-        if (foundUploaded) {
-          _showSnackBar(context, 'Files uploaded successfully!');
+        try {
+          final originalAttachments = List<RemarkAttachment>.from(existingAttachments.value);
+
+          // Immediate UI update
+          existingAttachments.value =
+              existingAttachments.value.where((a) => attachment.imageName != attachment.imageName).toList();
+          deletedAttachments.value = {...deletedAttachments.value, attachment.imageName};
+          final isNewFile = newlyUploadedFiles.value.any((a) => attachment.imageName == attachment.imageName);
+
+          if (isNewFile) {
+            // Remove from newly uploaded files
+            newlyUploadedFiles.value = newlyUploadedFiles.value
+                .where((a) => a.imageName != attachment.imageName)
+                .toList();
+            newlyUploadedFileNames.value = newlyUploadedFileNames.value
+                .where((n) => n != attachment.imageName)
+                .toList();
+            _showSnackBar(context, 'Attachment removed successfully');
+          } else {
+            // For existing files, call the delete API
+            final remarkIdArray = json.encode([remark.remarkId]);
+
+            print("🧨 DELETING ATTACHMENT:");
+            print("  Filename: ${attachment.imageName}");
+            print("  Remark ID Array: $remarkIdArray");
+            print("  Upload Date: ${_dateController.text}");
+            print("  Short Name: ${auth.teacherVerification?.shortName}");
+
+            // Immediately remove from UI for better UX
+            attachments.value = attachments.value
+                .where((a) => a.imageName != attachment.imageName)
+                .toList();
+
+            final ok = await remarkService.NdeleteRemarkDocument(
+              upload_date: formatDateForApi(_dateController.text),
+              shortName: auth.teacherVerification?.shortName ?? '',
+              filename: attachment.imageName,
+              student_id: remarkIdArray,
+            );
+
+            if (ok) {
+              _showSnackBar(context, 'Attachment deleted successfully');
+              // Add to deleteimagelist for the final update API call
+              deleteimagelist.value = [...deleteimagelist.value, attachment.imageName];
+            } else {
+              existingAttachments.value = originalAttachments;
+              deletedAttachments.value =
+                  deletedAttachments.value.difference({attachment.imageName});
+              _showSnackBar(context, 'Attachment deleted successfully');
+            }
+          }
+        } catch (e) {
+          print("❌ DELETE ERROR DETAILS: $e");
+          _showSnackBar(context, 'Error deleting attachment: ${e.toString()}');
         }
       }
     }
 
-    Future<void> deleteAttachment(RemarkAttachment att) async {
-      final remarkService = ref.read(remarkServiceProvider);
-      final auth = ref.read(authProvider).requireValue;
-
-      try {
-        // Store the original list for potential rollback
-        final originalAttachments = List<RemarkAttachment>.from(attachments.value);
-
-        // Immediately remove from UI for better UX
-        attachments.value = attachments.value.where((a) => a.imageName != att.imageName).toList();
-
-        final remarkIdArray = json.encode([remark.remarkId]);
-        final attArray = json.encode([att.imageName]);
-
-        print("🧨 DELETING ATTACHMENT:");
-        print("  Filename: ${att.imageName}");
-        print("  Remark ID Array: $remarkIdArray");
-        print("  Upload Date: ${_dateController.text}");
-        print("  Short Name: ${auth.teacherVerification?.shortName}");
-
-        final ok = await remarkService.NdeleteRemarkDocument(
-          upload_date: formatDateForApi(_dateController.text),
-          shortName: auth.teacherVerification?.shortName ?? '',
-          filename: att.imageName,
-          student_id: remarkIdArray,
-        );
-
-        if (ok) {
-          _showSnackBar(context, 'Attachment deleted successfully');
-
-          // Also remove from newlyUploadedFileNames if it was uploaded in this session
-          newlyUploadedFileNames.value = newlyUploadedFileNames.value.where((n) => n != att.imageName).toList();
-
-          // Add to deleteimagelist for the final update API call
-          deleteimagelist.value = [...deleteimagelist.value, att.imageName];
-        } else {
-          // Roll back if delete failed
-          attachments.value = originalAttachments;
-          _showSnackBar(context, 'Failed to delete attachment');
-        }
-      } catch (e) {
-        print("❌ DELETE ERROR DETAILS: $e");
-        _showSnackBar(context, 'Error: ${e.toString()}');
-      }
-    }
     void _resetForm() {
       _dateController.text = remark.remarkDate.split(' ').first;
       _subjectOfRemarkController.text = remark.remarkSubject;
@@ -495,17 +496,15 @@ class EditRemark extends HookConsumerWidget {
 
         final String fileNamePayload = namesToSend.isNotEmpty
             ? json.encode(namesToSend)
-            : ""; // Only send if there are new files
+            : "";
 
         final String deleteFilesPayload = filesToDelete.isNotEmpty
             ? json.encode(filesToDelete.toList())
             : "";
 
         print('📤 Saving remark...');
-        print('➡️ Filenames nametosend: $namesToSend');
-        // print('➡️ Filenames shouldSendFilenames: $shouldSendFilenames');
-        print('➡️ Filenames payload: $fileNamePayload');
-        print('➡️ Delete files payload: $deleteFilesPayload');
+        print('➡️ New filenames: $namesToSend');
+        print('➡️ Files to delete: $filesToDelete');
 
         final res = await remarkService.updateRemark(
           app_version: '1.70',
@@ -527,9 +526,9 @@ class EditRemark extends HookConsumerWidget {
           deleteFiles: deleteFilesPayload,
         );
 
-        // ✅ Cleaned response from updateRemark
         if (res['status'] == true) {
-          newlyUploadedFileNames.value = []; // clear after success
+          newlyUploadedFiles.value = [];
+          newlyUploadedFileNames.value = [];
           _showSnackBar(context, res['success_msg'] ?? "✅ Remark Updated Successfully!");
           Navigator.of(context).pop(true);
         } else {
@@ -542,7 +541,70 @@ class EditRemark extends HookConsumerWidget {
       }
     }
 
+    Widget _buildAttachmentItem(RemarkAttachment attachment, bool isNewUpload) {
+      final url = attachment.url != null && attachment.url!.isNotEmpty && attachment.url != "uploading"
+          ? "${attachment.url}/${attachment.imageName}"
+          : '';
 
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Card(
+          elevation: 2,
+          color: isNewUpload ? Colors.blue.shade50 : null,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                _getFileIcon(attachment.imageName),
+                if (isNewUpload)
+                  const Icon(Icons.new_releases, color: Colors.blue, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        attachment.imageName,
+                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        "Size: ${_formatFileSize(attachment.fileSize)}",
+                        style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                      ),
+                      if (isNewUpload)
+                        Text(
+                          "New upload",
+                          style: TextStyle(fontSize: 10.sp, color: Colors.blue, fontStyle: FontStyle.italic),
+                        ),
+                    ],
+                  ),
+                ),
+                if ((attachment.imageName.contains('.jpg') || attachment.imageName.contains('.png')) &&
+                    url.isNotEmpty && !isNewUpload)
+                  IconButton(
+                    icon: const Icon(Icons.remove_red_eye, color: Colors.green, size: 20),
+                    onPressed: () => onOpenAttachment(url),
+                    tooltip: "View",
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.download, color: Colors.blue, size: 20),
+                  onPressed: isDownloading.value || url.isEmpty || isNewUpload
+                      ? null
+                      : () => _handleDownload(attachment),
+                  tooltip: isNewUpload ? "Download after update" : "Download",
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                  onPressed: () => deleteAttachment(attachment),
+                  tooltip: "Delete",
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     Widget _readonlyTile(String label) => Container(
       width: double.infinity,
@@ -554,6 +616,8 @@ class EditRemark extends HookConsumerWidget {
       ),
       child: Text(label, style: TextStyle(fontSize: 14.sp, color: Colors.black87)),
     );
+
+
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -637,88 +701,57 @@ class EditRemark extends HookConsumerWidget {
                     ],
                   ),
 
-
                   if (remarkType.value == 'Remark') ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text("Attachments", style: TextStyle(fontWeight: FontWeight.bold)),
-                      if (isDownloading.value)
-                        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      else if (uploading.value)
-                        const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      else
-                        IconButton(
-                          icon: const Icon(Icons.attach_file, color: Colors.blue),
-                          onPressed: uploadAttachment,
-                        ),
-                    ],
-                  ),
-
-                  SizedBox(height: 2.h),
-                  if (loadingAttachments.value)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: LinearProgressIndicator(),
-                    )
-                  else if (attachments.value.isNotEmpty)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: attachments.value.map((att) {
-                        final url = att.url != null && att.url!.isNotEmpty ? "${att.url}/${att.imageName}" : '';
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2),
-                          child: Row(
-                            children: [
-                              if(att.imageName.isNotEmpty)
-
-                              if(att.imageName.contains('.jpg') || att.imageName.contains('.png'))
-                                const Icon(Icons.image, color: Colors.redAccent, size: 24)
-                              else
-                                const Icon(Icons.insert_drive_file, color: Colors.blue, size: 24),
-
-                              const SizedBox(width: 5),
-                              if(att.imageName.isNotEmpty)
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(att.imageName, style: TextStyle(fontSize: 14.sp)),
-                                    Text(
-                                      "Size: ${_formatFileSize(att.fileSize)}",
-                                      style: TextStyle(fontSize: 12.sp, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              if((att.imageName.contains('.jpg') || att.imageName.contains('.png')) && url.isNotEmpty)
-                                if(att.imageName.isNotEmpty)
-                                IconButton(
-                                  icon: const Icon(Icons.remove_red_eye, color: Colors.green),
-                                  onPressed: () => onOpenAttachment(url),
-                                ),
-                              if(att.imageName.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.download, color: Colors.blue),
-                                onPressed: isDownloading.value || (url.isEmpty) ? null : () => _handleDownload(att),
-                              ),
-                              if(att.imageName.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => deleteAttachment(att),
-                              ),
-                            ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Attachments", style: TextStyle(fontWeight: FontWeight.bold)),
+                        if (isDownloading.value)
+                          const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        else if (uploading.value)
+                          const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        else
+                          IconButton(
+                            icon: const Icon(Icons.attach_file, color: Colors.blue),
+                            onPressed: uploadAttachment,
                           ),
-                        );
-                      }).toList(),
-                    )
-                  else
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Text("No attachments", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                      ],
                     ),
-],
+
+                    SizedBox(height: 2.h),
+                    if (loadingAttachments.value)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: LinearProgressIndicator(),
+                      )
+                    else if (attachments.value.isNotEmpty || newlyUploadedFiles.value.isNotEmpty)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Existing attachments section
+                          if (attachments.value.isNotEmpty) ...[
+                            const Text("Existing Attachments",
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            SizedBox(height: 8.h),
+                            ...attachments.value.map((attachment) => _buildAttachmentItem(attachment, false)).toList(),
+                            SizedBox(height: 16.h),
+                          ],
+
+                          // Newly uploaded files section
+                          if (newlyUploadedFiles.value.isNotEmpty) ...[
+                            Text("New files to add (${newlyUploadedFiles.value.length}):",
+                                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.blue)),
+                            SizedBox(height: 8.h),
+                            ...newlyUploadedFiles.value.map((attachment) => _buildAttachmentItem(attachment, true)).toList(),
+                          ],
+                        ],
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text("No attachments", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                      ),
+                  ],
                   SizedBox(height: 20.h),
 
                   Row(
@@ -758,6 +791,7 @@ class EditRemark extends HookConsumerWidget {
       ),
     );
   }
+
   String _formatFileSize(String? sizeInBytes) {
     if (sizeInBytes == null || sizeInBytes.isEmpty) return "Unknown";
 
@@ -771,6 +805,18 @@ class EditRemark extends HookConsumerWidget {
       return "${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB";
     } else {
       return "${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB";
+    }
+  }
+
+  Widget _getFileIcon(String fileName) {
+    if (fileName.contains('.jpg') || fileName.contains('.png')) {
+      return const Icon(Icons.image, color: Colors.redAccent, size: 24);
+    } else if (fileName.contains('.pdf')) {
+      return const Icon(Icons.picture_as_pdf, color: Colors.red, size: 24);
+    } else if (fileName.contains('.doc') || fileName.contains('.docx')) {
+      return const Icon(Icons.description, color: Colors.blue, size: 24);
+    } else {
+      return const Icon(Icons.insert_drive_file, color: Colors.blue, size: 24);
     }
   }
 

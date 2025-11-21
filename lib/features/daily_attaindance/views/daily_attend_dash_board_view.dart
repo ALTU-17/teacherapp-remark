@@ -250,6 +250,19 @@ class StudentList extends HookConsumerWidget {
                 ),
               ),
 
+            // In StudentList build method, add this after the "Already marked" text:
+            Text(
+              "Present: ${sortedStudents.where((s) => s.attendanceStatus != "1").length} | "
+                  "Absent: ${sortedStudents.where((s) => s.attendanceStatus == "1").length} | "
+                  "Total: ${sortedStudents.length}",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8.h),
+
             /// Heading Row
             Container(
               padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
@@ -383,6 +396,26 @@ class StudentTile extends HookConsumerWidget {
     final markAttendance = useState(student.markAttendance == '1');
     final studentsP = ref.read(attendancePProvider(studentBody).notifier);
 
+    void updateStudentSelection(bool? v, bool isAbsentCheckbox) {
+      if (isAbsentCheckbox) {
+        attendanceStatus.value = v ?? false;
+        // When marking absent, automatically mark for attendance
+        final s = student.copyWith(
+          attendanceStatus: attendanceStatus.value ? "1" : "0",
+          markAttendance: "1", // Always mark for attendance when changing status
+        );
+        studentsP.toggleStudentSelection(s);
+      } else {
+        markAttendance.value = v ?? false;
+        final s = student.copyWith(
+          markAttendance: markAttendance.value ? "1" : "0",
+          // If unmarking attendance, also set as present
+          attendanceStatus: markAttendance.value ? (attendanceStatus.value ? "1" : "0") : "0",
+        );
+        studentsP.toggleStudentSelection(s);
+      }
+    }
+
     return Card(
       child: ListTile(
         leading: Row(
@@ -390,12 +423,7 @@ class StudentTile extends HookConsumerWidget {
           children: [
             Checkbox(
               value: markAttendance.value,
-              onChanged: (v) {
-                markAttendance.value = v ?? false;
-                final s = student.copyWith(
-                    markAttendance: markAttendance.value ? "1" : "0");
-                studentsP.toggleStudentSelection(s);
-              },
+              onChanged: (v) => updateStudentSelection(v, false),
             ),
             CircleAvatar(
               child: student.rollNo != null
@@ -423,12 +451,7 @@ class StudentTile extends HookConsumerWidget {
         ),
         trailing: Checkbox(
           value: attendanceStatus.value,
-          onChanged: (v) {
-            attendanceStatus.value = v ?? false;
-            final s = student.copyWith(
-                attendanceStatus: attendanceStatus.value ? "1" : "0");
-            studentsP.toggleStudentSelection(s);
-          },
+          onChanged: (v) => updateStudentSelection(v, true),
         ),
       ),
     );

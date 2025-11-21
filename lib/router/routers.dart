@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:teacherapp/features/auth/views/aboutUs_view.dart';
 import 'package:teacherapp/features/curriculum/curriculum_dashboard.dart';
 import 'package:teacherapp/features/home/views/calendar_view.dart';
+import 'package:teacherapp/features/home/views/navbar.dart';
 import 'package:teacherapp/features/home/views/scaffold_with_navigation.dart';
 import 'package:teacherapp/splash_screen.dart';
 import 'package:teacherapp/features/daily_attaindance/views/daily_attend_dash_board_view.dart';
@@ -34,9 +35,10 @@ class SplashRoute extends GoRouteData with _$SplashRoute {
 }
 
 // ///////////////////// HOME ////////////////////////////////
+// Remove or comment out the old HomeShellRoute and replace with:
+
 @TypedShellRoute<HomeShellRoute>(routes: [
-  TypedGoRoute<
-      DashboardRoute>(path: DashboardRoute.path, name: "Dashboard", routes: [
+  TypedGoRoute<DashboardRoute>(path: DashboardRoute.path, name: "Dashboard", routes: [
     TypedGoRoute<LeaveApplicationDashboardRoute>(
         path: LeaveApplicationDashboardRoute.path,
         routes: [
@@ -68,22 +70,37 @@ class SplashRoute extends GoRouteData with _$SplashRoute {
       path: ChangeAcademicRoute.path, name: "Change Academic Year"),
   TypedGoRoute<TeacherProfileRoute>(
       path: TeacherProfileRoute.path, name: "Profile"),
+  // Add QR Code route
+  // TypedGoRoute<QRCodeRoute>(path: QRCodeRoute.path, name: "QR Code"),
 ])
 class HomeShellRoute extends ShellRouteData {
   const HomeShellRoute();
   static final GlobalKey<NavigatorState> $navigatorKey = shellNavKey;
+
   @override
   Widget builder(BuildContext context, GoRouterState state, Widget navigator) {
-    return ScaffoldWithNavigation(child: navigator);
+    return ScaffoldWithCustomNavBar(child: navigator);
   }
 }
+
+// // Add QR Code route
+// class QRCodeRoute extends GoRouteData with _$QRCodeRoute {
+//   const QRCodeRoute();
+//   static const path = '/qr_code';
+//
+//   @override
+//   Widget build(BuildContext context, GoRouterState state) {
+//     // You'll need to get regId from your provider or pass it differently
+//     return QRCodeScreen(regId: 'your_reg_id_here');
+//   }
+// }
 
 class DashboardRoute extends GoRouteData with _$DashboardRoute {
   const DashboardRoute();
   static const path = '/dashbaord';
   @override
   Widget build(BuildContext context, GoRouterState state) {
-    return const DashboardView();
+    return DashboardView();
   }
 }
 

@@ -4,8 +4,8 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:teacherapp/common/customDropDown.dart';
 import 'package:teacherapp/config/utils.dart';
 import 'package:teacherapp/features/auth/models/teacher_user.dart';
@@ -13,7 +13,9 @@ import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:teacherapp/router/routers.dart';
+import '../../../views/home/crop.dart';
 import '../../auth/auth.dart';
+import 'package:crop_your_image/crop_your_image.dart';
 
 class TeacherProfileView extends HookConsumerWidget {
   const TeacherProfileView({super.key});
@@ -103,23 +105,47 @@ class TeacherProfileView extends HookConsumerWidget {
       final imageName = auth.teacherDetails?.teacherImageName;
       final url = '${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName';
 
-      onImagePick() async {
+      Future<void> onImagePick() async {
         try {
           final picker = ImagePicker();
           final XFile? pickedFile = await picker.pickImage(
             source: ImageSource.gallery,
+            imageQuality: 90, // optional: reduce size
           );
 
           if (pickedFile == null) return;
 
-          // Simple approach without cropping first
-          image.value = pickedFile;
-          await authP.profileImageUpload(File(pickedFile.path));
+          // Read bytes from picked image
+          final bytes = await pickedFile.readAsBytes();
 
-        } catch (e) {
-          print('Image pick error: $e');
+          // Open crop screen and get back cropped bytes (Uint8List?)
+          final Uint8List? cropped = await Navigator.of(context).push<Uint8List?>(
+            MaterialPageRoute(
+              builder: (_) => CropScreen(
+                imageData: bytes,
+              ),
+            ),
+          );
+
+          if (cropped == null) {
+            // user cancelled cropping
+            return;
+          }
+
+          // Save cropped bytes to a temporary file so your existing upload method can use a File
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
+          await tempFile.writeAsBytes(cropped, flush: true);
+
+          // Update UI
+          image.value = XFile(tempFile.path);
+
+          // Upload using your notifier method
+          await authP.profileImageUpload(tempFile);
+        } catch (e, st) {
+          debugPrint('Image pick / crop error: $e\n$st');
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to pick image')),
+            const SnackBar(content: Text('Failed to pick/crop image')),
           );
         }
       }

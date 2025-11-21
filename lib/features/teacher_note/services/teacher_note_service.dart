@@ -127,7 +127,8 @@ class TeacherNoteService {
         "random_no": body.randomNo, // This should now be your shared random number
         "teacher_id": body.teacherId,
         "description": body.description,
-        "str_array": jsonEncode([body.strArray]), // Encode as JSON array: ["135^535"]
+        "str_array": body.strArray, // already a valid JSON string like ["130^512","132^521"]
+
         "login_type": body.loginType,
         "publish": body.publish,
         "dailynote_date": body.dailyNoteDate,

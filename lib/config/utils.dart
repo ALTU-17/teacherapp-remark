@@ -17,6 +17,8 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:teacherapp/config/config.dart';
 
+import 'const.dart';
+
 class Utils {
   static void debLog(print) {
     if (kDebugMode) {
@@ -258,7 +260,7 @@ class Utils {
   /// Download and open a network file
   static Future<void> _openNetworkFile(String url) async {
     try {
-      Utils.toast("Downloading file...");
+      Utils.toast("Loading...");
 
       // Create a Dio instance for downloading
       final dio = Dio();

@@ -95,7 +95,6 @@ class EditTeacherNoteService {
   }
 
 
-  // Update teacher note
   Future<Map<String, dynamic>> updateTeacherNote({
     required String app_version,
     required String noteId,
@@ -113,7 +112,8 @@ class EditTeacherNoteService {
     try {
       final url = '${baseUrl}AdminApi/daily_notes';
 
-      final params = {
+      // Create FormData instead of JSON
+      final formData = FormData.fromMap({
         "academic_yr": academicYr,
         "teacher_id": teacherId,
         "section_id": sectionId,
@@ -126,13 +126,37 @@ class EditTeacherNoteService {
         "publish": "N",
         "operation": "edit",
         "short_name": shortName,
-        if (fileName.isNotEmpty) "filename": fileName,
-        if (deleteFiles.isNotEmpty) "deleteimagelist": deleteFiles,
-      };
+      });
 
-      print("UPDATE TEACHER NOTE PARAMS: $params");
+      // Add filename if provided
+      if (fileName.isNotEmpty && fileName != '""') {
+        formData.fields.add(MapEntry("filename", fileName));
+        print('📁 Filename param: $fileName');
+      }
 
-      final response = await apiClient.post(url, data: params);
+      // Add delete files if provided
+      if (deleteFiles.isNotEmpty && deleteFiles != '""') {
+        formData.fields.add(MapEntry("deleteimagelist", deleteFiles));
+        print('🗑️ Delete files param: $deleteFiles');
+      }
+
+      print("📤 UPDATE TEACHER NOTE FORM DATA:");
+      for (var field in formData.fields) {
+        print('   ${field.key}: ${field.value}');
+      }
+
+      final response = await apiClient.post(
+        url,
+        data: formData,
+        options: Options(
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        ),
+      );
+
+      print('📡 Response status: ${response.statusCode}');
+      print('📡 Response data: ${response.data}');
 
       if (response.statusCode == 200) {
         final result = response.data is String

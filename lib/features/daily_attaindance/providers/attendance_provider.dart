@@ -54,28 +54,64 @@ class AttendanceP extends _$AttendanceP {
     final selectedStudents = currentState.selectedStudents;
     final allStudents = currentState.students;
 
-    // Prepare students data based on selection
-    final studentsToUpdate = selectedStudents.isEmpty
-        ? _markAllStudentsPresent(allStudents)
-        : _mergeSelectedStudents(allStudents, selectedStudents);
     state = AsyncLoading();
-    // Create attendance data and make API call
-    final success = await _updateAttendanceData(
-      body: body,
-      students: studentsToUpdate,
-      authData: authData,
-      markAllPresent: selectedStudents.isEmpty,
-    );
 
-    if (success) {
-      state = AsyncData(AttendanceState(
+    try {
+      // Prepare students data based on selection
+      final studentsToUpdate = _prepareStudentsForUpdate(allStudents, selectedStudents);
+
+      // Create attendance data and make API call
+      final success = await _updateAttendanceData(
+        body: body,
         students: studentsToUpdate,
-        selectedStudents: [],
-      ));
-      ref.invalidateSelf();
-    } else {
+        authData: authData,
+      );
+
+      if (success) {
+        state = AsyncData(AttendanceState(
+          students: studentsToUpdate,
+          selectedStudents: [],
+        ));
+        ref.invalidateSelf();
+        return true;
+      } else {
+        state = AsyncData(currentState);
+        return false;
+      }
+    } catch (e) {
       state = AsyncData(currentState);
+      return false;
     }
+  }
+
+  List<Students> _prepareStudentsForUpdate(List<Students> allStudents, List<Students> selectedStudents) {
+    // If no students are explicitly selected, mark ALL as PRESENT
+    if (selectedStudents.isEmpty) {
+      return allStudents.map((student) => student.copyWith(
+        attendanceStatus: "0", // 0 = Present
+        markAttendance: "1",   // 1 = Marked for attendance
+      )).toList();
+    }
+
+    // If students are selected, update only the selected ones
+    final selectedStudentIds = selectedStudents.map((s) => s.studentId).toSet();
+
+    return allStudents.map((student) {
+      if (selectedStudentIds.contains(student.studentId)) {
+        // This student was explicitly selected - use their current status
+        final selectedStudent = selectedStudents.firstWhere((s) => s.studentId == student.studentId);
+        return student.copyWith(
+          attendanceStatus: selectedStudent.attendanceStatus,
+          markAttendance: selectedStudent.markAttendance,
+        );
+      } else {
+        // Student was not selected - mark as present
+        return student.copyWith(
+          attendanceStatus: "0", // Present
+          markAttendance: "1",   // Marked
+        );
+      }
+    }).toList();
   }
 
   Future deleteAttendance() async {
@@ -91,7 +127,7 @@ class AttendanceP extends _$AttendanceP {
       students: students,
       body: param,
       authData: authData,
-      attendanceStatus: "0",
+      // attendanceStatus: "0",
     );
 
     final success = await _deleteAttendanceData(
@@ -129,14 +165,13 @@ class AttendanceP extends _$AttendanceP {
   }
 
   List<Att> _createAttObjects(List<Students> students, StudentBody body,
-      AuthData authData, String attendanceStatus) {
+      AuthData authData) {
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
 
     return students
-        .where((s) => attendanceStatus == "1" || s.markAttendance != "0")
+        .where((s) => s.markAttendance == "1") // Only include marked students
         .map((s) => Att(
-      attendanceStatus:
-      attendanceStatus == "1" ? "1" : (s.attendanceStatus ?? "0"),
+      attendanceStatus: s.attendanceStatus ?? "0", // Use student's status
       fName: s.firstName,
       lName: s.lastName,
       rollNo: s.rollNo?.toString(),
@@ -157,10 +192,8 @@ class AttendanceP extends _$AttendanceP {
     required List<Students> students,
     required StudentBody body,
     required AuthData authData,
-    required String attendanceStatus,
   }) {
-    final attObjects =
-    _createAttObjects(students, body, authData, attendanceStatus);
+    final attObjects = _createAttObjects(students, body, authData);
     return {"arraylist": attObjects.map((e) => e.toJson()).toList()};
   }
 
@@ -168,7 +201,6 @@ class AttendanceP extends _$AttendanceP {
     required StudentBody body,
     required List<Students> students,
     required AuthData authData,
-    required bool markAllPresent,
   }) async {
     final api = await ref.read(apiClientProvider.future);
     _attendanceService = AttendanceService(api, authData.url);
@@ -177,7 +209,6 @@ class AttendanceP extends _$AttendanceP {
       students: students,
       body: body,
       authData: authData,
-      attendanceStatus: markAllPresent ? "0" : "1",
     );
 
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;

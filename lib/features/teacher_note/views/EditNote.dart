@@ -52,7 +52,7 @@ class EditTeacherNoteView extends HookConsumerWidget {
     final isDownloading = useState<bool>(false);
     final loadingAttachments = useState<bool>(false);
     final refreshTrigger = useState<int>(0);
-
+    final _descriptionController = useTextEditingController(text: note.description);
     final teacherNoteService = ref.read(editTeacherNoteServiceProvider);
     final auth = ref.read(authProvider).requireValue;
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -387,10 +387,12 @@ class EditTeacherNoteView extends HookConsumerWidget {
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text("Cancel")),
+                child: const Text("Cancel")
+            ),
             TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text("Delete")),
+                child: const Text("Delete")
+            ),
           ],
         ),
       );
@@ -400,31 +402,25 @@ class EditTeacherNoteView extends HookConsumerWidget {
           // Store original for rollback
           final originalAttachments = List<NoteAttachment>.from(existingAttachments.value);
 
-          // Immediate UI update
-          existingAttachments.value =
-              existingAttachments.value.where((a) => a.imageName != attachment.imageName).toList();
+          // Immediate UI update only - NO SERVER CALL
+          existingAttachments.value = existingAttachments.value
+              .where((a) => a.imageName != attachment.imageName)
+              .toList();
+
+          // Add to deleted attachments set (will be processed during update)
           deletedAttachments.value = {...deletedAttachments.value, attachment.imageName};
 
-          final result = await teacherNoteService.deleteTeacherNoteDocument(
-            uploadDate: formatDateForApi(note.date ?? ''),
-            random_no: note.notesId ?? '',
-            shortName: auth.teacherVerification?.shortName ?? '',
-            filename: attachment.imageName,
-          );
+          // Remove from newly uploaded if it was uploaded in this session
+          newlyUploadedFileNames.value = newlyUploadedFileNames.value
+              .where((n) => n != attachment.imageName)
+              .toList();
 
-          if (result) {
-            _showSnackBar(context, 'Attachment deleted successfully');
-            // Remove from newly uploaded if it was uploaded in this session
-            newlyUploadedFileNames.value = newlyUploadedFileNames.value
-                .where((n) => n != attachment.imageName)
-                .toList();
-          } else {
-            // Rollback on failure
-            existingAttachments.value = originalAttachments;
-            deletedAttachments.value =
-                deletedAttachments.value.difference({attachment.imageName});
-            _showSnackBar(context, 'Failed to delete attachment');
-          }
+          newlyUploadedAttachments.value = newlyUploadedAttachments.value
+              .where((a) => a.imageName != attachment.imageName)
+              .toList();
+
+          _showSnackBar(context, 'Attachment marked for deletion. Click Update to save changes.');
+
         } catch (e) {
           _showSnackBar(context, 'Error deleting attachment: $e');
         }
@@ -438,41 +434,52 @@ class EditTeacherNoteView extends HookConsumerWidget {
 
         try {
           final formData = formKey.currentState?.value ?? {};
-          final description = formData['description'] ?? '';
+          final description = formData['description']?.toString().trim() ?? '';
 
-          // Current server attachments
-          final currentServerAttachments =
-          await teacherNoteService.getTeacherNoteAttachments(
+          // Validate description
+          if (_descriptionController.text.isEmpty) {
+            _showSnackBar(context, 'Description cannot be empty');
+            return;
+          }
+
+          print('📝 Updating teacher note...');
+
+          // Get current server attachments to compare
+          final currentServerAttachments = await teacherNoteService.getTeacherNoteAttachments(
             noteId: note.notesId ?? '',
             noteDate: formatDateForApi(note.date ?? ''),
             shortName: auth.teacherVerification?.shortName ?? '',
           );
 
-          final currentServerFilenames =
-          currentServerAttachments.map((a) => a.imageName).toSet();
-          final remainingFilenames =
-          existingAttachments.value.map((a) => a.imageName).toSet();
+          final currentServerFilenames = currentServerAttachments.map((a) => a.imageName).toSet();
 
-          // Files to delete = files on server but not in current UI
-          final filesToDelete =
-          currentServerFilenames.difference(remainingFilenames);
+          // Files to delete = files marked for deletion + files on server but not in current UI
+          final filesToDelete = {
+            ...deletedAttachments.value,
+            ...currentServerFilenames.difference(
+                existingAttachments.value.map((a) => a.imageName).toSet()
+            )
+          };
 
-          // Only send newly uploaded files (not existing server files)
-          final fileNamePayload = newlyUploadedFileNames.value.isNotEmpty
-              ? json.encode(newlyUploadedFileNames.value)
-              : "";
+          // Handle file names - ensure proper JSON format
+          String fileNamePayload = "";
+          if (newlyUploadedFileNames.value.isNotEmpty) {
+            fileNamePayload = json.encode(newlyUploadedFileNames.value);
+            print('📤 Files to add (JSON): $fileNamePayload');
+          }
 
-          final deleteFilesPayload =
-          filesToDelete.isNotEmpty ? json.encode(filesToDelete.toList()) : "";
+          // Handle delete files - ensure proper JSON format
+          String deleteFilesPayload = "";
+          if (filesToDelete.isNotEmpty) {
+            deleteFilesPayload = json.encode(filesToDelete.toList());
+            print('🗑️ Files to delete (JSON): $deleteFilesPayload');
+          }
 
-          print('📤 Updating teacher note...');
-          print('➡️ New filenames: ${newlyUploadedFileNames.value}');
-          print('➡️ Files to delete: $filesToDelete');
-
+          // Make the update API call
           final res = await teacherNoteService.updateTeacherNote(
             app_version: '1.70',
             noteId: note.notesId ?? '',
-            description: description,
+            description: _descriptionController.text,
             noteDate: formatDateForApi(note.date ?? ''),
             academicYr: auth.academicYr ?? '',
             teacherId: auth.regId ?? '',
@@ -484,33 +491,47 @@ class EditTeacherNoteView extends HookConsumerWidget {
             deleteFiles: deleteFilesPayload,
           );
 
+          print('📡 API Response: $res');
+
           if (res['status'] == true) {
+            // Clear all temporary states only on successful update
             newlyUploadedFileNames.value = [];
-            newlyUploadedAttachments.value = []; // Clear newly uploaded attachments
+            newlyUploadedAttachments.value = [];
             deletedAttachments.value = {};
+
             _showSnackBar(context, res['success_msg'] ?? "✅ Teacher Note Updated Successfully!");
+
+            // Call the callback to refresh parent
             onNoteUpdated?.call();
-            context.pop();
+
+            // Navigate back
+            if (context.mounted) {
+              context.pop();
+            }
           } else {
-            _showSnackBar(
-                context, res['error_msg'] ?? "❌ Failed to update teacher note");
+            final errorMsg = res['error_msg'] ?? "❌ Failed to update teacher note";
+            _showSnackBar(context, errorMsg);
+            print('❌ Update failed: $errorMsg');
+
+            // Don't clear states on failure so user can retry
           }
         } catch (e, st) {
           print("❌ Exception in onEdit: $e");
-          print(st);
-          _showSnackBar(context, "Error updating teacher note: $e");
+          print("Stack trace: $st");
+          _showSnackBar(context, "Error updating teacher note: ${e.toString()}");
         } finally {
           isUploading.value = false;
         }
       } else {
-        _showSnackBar(context, 'Please fill all required fields');
+        // Form validation failed
+        final errors = formKey.currentState?.errors;
+        print('❌ Form validation errors: $errors');
+        _showSnackBar(context, 'Please fix the form errors');
       }
     }
 
-
     void resetForm() {
-      formKey.currentState?.fields['description']
-          ?.didChange(note.description ?? '');
+      _descriptionController.text = note.description!;
     }
 
     Widget _buildAttachmentItem(NoteAttachment attachment, bool isNewUpload) {
@@ -713,18 +734,26 @@ class EditTeacherNoteView extends HookConsumerWidget {
                   const Text("*Description",
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   SizedBox(height: 5.h),
-                  FormBuilderTextField(
-                    name: 'description',
-                    maxLines: 3,
-                    initialValue: note.description,
-                    validator: FormBuilderValidators.required(
-                        errorText: 'Description is mandatory'),
+                  TextField(
+                    controller: _descriptionController,
+                    maxLines: 5,
                     decoration: InputDecoration(
                       hintText: "Type here...",
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10.r)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
                     ),
                   ),
+                  // FormBuilderTextField(
+                  //   name: 'description',
+                  //   maxLines: 3,
+                  //   initialValue: _descriptionController,
+                  //   validator: FormBuilderValidators.required(
+                  //       errorText: 'Description is mandatory'),
+                  //   decoration: InputDecoration(
+                  //     hintText: "Type here...",
+                  //     border: OutlineInputBorder(
+                  //         borderRadius: BorderRadius.circular(10.r)),
+                  //   ),
+                  // ),
 
                   SizedBox(height: 20.h),
                   _buildAttachmentSection(),

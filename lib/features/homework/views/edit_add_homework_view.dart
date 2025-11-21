@@ -250,44 +250,44 @@ class EditAddHomeWorkView extends HookConsumerWidget {
         //   _showSnackBar(context, 'File not uploaded properly');
         // } else {
 
-          String originalUrl = url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
-          String reformattedDateStr;
-          String baseDownloadUrl = originalUrl;
+        String originalUrl = url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
+        String reformattedDateStr;
+        String baseDownloadUrl = originalUrl;
 
-          RegExp dateRegExp = RegExp(r'(\d{2}-\d{2}-\d{4})');
-          Match? dateMatch = dateRegExp.firstMatch(originalUrl);
+        RegExp dateRegExp = RegExp(r'(\d{2}-\d{2}-\d{4})');
+        Match? dateMatch = dateRegExp.firstMatch(originalUrl);
 
-          if (dateMatch != null && dateMatch.group(0) != null) {
-            String extractedDate = dateMatch.group(0)!;
-            try {
-              // Parse the extracted date (dd-MM-yyyy)
-              DateFormat inputFormat = DateFormat('dd-MM-yyyy');
-              DateTime parsedDate = inputFormat.parse(extractedDate);
-              DateFormat outputFormat = DateFormat('yyyy-MM-dd');
-              reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
-              print('Original Date from URL: $extractedDate');
-              print('Reformatted Date: $reformattedDateStr');
-              baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
-              print('Potentially modified base URL for download: $baseDownloadUrl');
+        if (dateMatch != null && dateMatch.group(0) != null) {
+          String extractedDate = dateMatch.group(0)!;
+          try {
+            // Parse the extracted date (dd-MM-yyyy)
+            DateFormat inputFormat = DateFormat('dd-MM-yyyy');
+            DateTime parsedDate = inputFormat.parse(extractedDate);
+            DateFormat outputFormat = DateFormat('yyyy-MM-dd');
+            reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
+            print('Original Date from URL: $extractedDate');
+            print('Reformatted Date: $reformattedDateStr');
+            baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
+            print('Potentially modified base URL for download: $baseDownloadUrl');
 
-            } catch (e) {
-              print('Error parsing or formatting date from URL: $e');
-              reformattedDateStr = "N/A"; // Or handle as an error
-            }
-          } else {
-            print('Date not found in URL path or format is unexpected.');
-            reformattedDateStr = "N/A";
+          } catch (e) {
+            print('Error parsing or formatting date from URL: $e');
+            reformattedDateStr = "N/A"; // Or handle as an error
           }
-          String downloadUrl = '$baseDownloadUrl';
-          print('Homework Download URL: $downloadUrl');
+        } else {
+          print('Date not found in URL path or format is unexpected.');
+          reformattedDateStr = "N/A";
+        }
+        String downloadUrl = '$baseDownloadUrl';
+        print('Homework Download URL: $downloadUrl');
 
-          if (Platform.isAndroid) {
-            await _downloadFileAndroid(downloadUrl, context, imageName, flutterLocalNotificationsPlugin);
-          } else if (Platform.isIOS) {
-            await _downloadFileIOS(downloadUrl, imageName, flutterLocalNotificationsPlugin);
-          } else {
-            _showSnackBar(context, 'Unsupported platform');
-          }
+        if (Platform.isAndroid) {
+          await _downloadFileAndroid(downloadUrl, context, imageName, flutterLocalNotificationsPlugin);
+        } else if (Platform.isIOS) {
+          await _downloadFileIOS(downloadUrl, imageName, flutterLocalNotificationsPlugin);
+        } else {
+          _showSnackBar(context, 'Unsupported platform');
+        }
         // }
       } catch (e) {
         _showSnackBar(context, 'Failed to download file: $e');
@@ -445,36 +445,48 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Attachments", style: TextStyle(fontWeight: FontWeight.bold)),
           SizedBox(height: 8.h),
           FormBuilderFilePicker(
             name: "files",
-            maxFiles: 5,
+            // maxFiles: 5,
             withData: true,
             previewImages: true,
             typeSelectors: [
               TypeSelector(
                 type: FileType.any,
                 selector: Row(
-                  children: <Widget>[
-                    Icon(Icons.attach_file, color: Colors.blue),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Text("Add attachments", style: TextStyle(color: Colors.blue)),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    Text(
+                      "Attachments",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    SizedBox(width: 210),
+
+                    Icon(
+                      Icons.attach_file,
+                      color: Colors.blue,
                     ),
                   ],
                 ),
               ),
             ],
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10.r),
-              ),
+            decoration: const InputDecoration(
+              border: InputBorder.none, // ✅ No underline or border
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              errorBorder: InputBorder.none,
+              disabledBorder: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
             ),
           ),
         ],
       );
     }
+
 
     // Build attachment section for edit mode
     Widget _buildEditAttachmentSection() {

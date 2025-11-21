@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:teacherapp/features/home/views/dashboard_view.dart';
 import 'package:teacherapp/router/routers.dart';
 
 import 'logout_dialog.dart';
@@ -56,14 +58,7 @@ class DrawerPage extends ConsumerWidget {
         },
       ),
 
-      CardItem(
-        imagePath: 'assets/ace.png',
-        title: 'About Us',
-        onTap: () {
-          Navigator.of(context).pop(); // 👈 Closes the dialog first
-          context.go(AboutUsScreenRoute().location);
-        },
-      ),
+
 
       CardItem(
         imagePath: 'assets/almanac.png',
@@ -74,18 +69,35 @@ class DrawerPage extends ConsumerWidget {
         },
       ),
 
-      //   // Add the new Share App card here
-      //   CardItem(
-      //     imagePath: 'assets/share.png', // Add an appropriate icon for sharing
-      //     title: 'Share App',
-      //     onTap: () {
-      //       Share.share(
-      //         'Download Evolvu: Smart Schooling App https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool', // Replace with your app link
-      //         subject: 'Parent App!',
-      //       );
-      //     },
-      //   ),
+        CardItem(
+          imagePath: 'assets/share.png',
+          title: 'Share App',
+          onTap: () {
+            Share.share(
+              'https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool.teacherapp',
+              subject: 'Teacher App!',
+            );
+          },
+        ),
+      CardItem(
+          imagePath: 'assets/applogo.png',
+          title: 'Version ${DashboardView.packageInfoVar}',
+          onTap: () {
+            Share.share(
+              'https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool.teacherapp',
+              subject: 'Teacher App!',
+            );
+          },
+        ),
 
+      CardItem(
+        imagePath: 'assets/ace.png',
+        title: 'About Us',
+        onTap: () {
+          Navigator.of(context).pop();
+          context.go(AboutUsScreenRoute().location);
+        },
+      ),
       //   CardItem(
       //     imagePath: 'assets/ace.png',
       //     title: 'About Us',
@@ -97,18 +109,7 @@ class DrawerPage extends ConsumerWidget {
       //     },
       //   ),
 
-      //   CardItem(
-      //     imagePath: 'assets/ace.png',
-      //     title: 'ID Card',
-      //     onTap: () {
-      //       Navigator.push(
-      //         context,
-      //         MaterialPageRoute(builder: (_) => AboutUsPage(academic_yr:academic_yr,shortName: shortName)),
-      //       );
-      //     },
-      //   ),
-      //   // Add more CardItems here...
-      // ];
+
     ];
     return Dialog(
       backgroundColor: Colors.transparent,

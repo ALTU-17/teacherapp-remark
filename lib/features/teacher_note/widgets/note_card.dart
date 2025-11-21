@@ -119,7 +119,7 @@ class NoteCard extends HookConsumerWidget {
                           const Icon(Icons.class_, color: Colors.blue, size: 18),
                           SizedBox(width: 5.w),
                           Text(
-                            "Class: ${note.classname}",
+                            "Class: ${note.classname} ${note.sectionname}",
                             style: TextStyle(fontSize: 14.sp),
                           ),
                         ],
@@ -134,18 +134,8 @@ class NoteCard extends HookConsumerWidget {
                           ),
                         ],
                       ),
-                      Row(
-                        children: [
-                          const Icon(Icons.calendar_today, color: Colors.green, size: 18),
-                          SizedBox(width: 5.w),
-                          Text(
-                            note.date != null
-                                ? DateFormat('dd-MM-yyyy').format(DateTime.parse(note.date!))
-                                : "",
-                            style: TextStyle(fontSize: 14.sp, color: Colors.black),
-                          ),
-                        ],
-                      ),
+
+
                     ],
                   ),
 
@@ -178,8 +168,37 @@ class NoteCard extends HookConsumerWidget {
                           style: TextStyle(fontSize: 14.sp, color: Colors.black),
                         ),
                       ),
+
                     ],
                   ),
+                  Divider(color: Colors.grey.shade300, thickness: 1),
+
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child:  Text( "Publish on: ${note.publishDate != null
+                            ? DateFormat('dd-MM-yyyy').format(note.publishDate!)
+                            : ''}",
+                          style: TextStyle(fontSize: 14.sp, color: Colors.green),
+                        ),
+                        ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: note.publish == 'Y' ? Colors.green : Colors.orange,
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Text(
+                          note.publish == 'Y' ? "Published" : "Draft",
+                          style: TextStyle(fontSize: 12.sp, color: Colors.white),
+                        ),
+                      ),
+
+                    ],
+                  ),
+                  Divider(color: Colors.grey.shade300, thickness: 1),
 
                   /// **Action Buttons**
                   Row(
