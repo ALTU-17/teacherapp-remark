@@ -11,6 +11,7 @@ import 'package:teacherapp/views/home/remark/remarkDashBoard.dart';
 import 'package:teacherapp/views/home/timeTable/timeTableTecaher.dart';
 import '../features/SmartChatWebView.dart';
 import '../features/auth/views/views.dart';
+import '../features/home/views/notice_board.dart';
 import '../features/home/views/views.dart';
 import '../features/homework/models/models.dart';
 import '../features/homework/views/views.dart';
@@ -294,6 +295,15 @@ class TeacherProfileRoute extends GoRouteData with _$TeacherProfileRoute {
   @override
   Widget build(BuildContext context, GoRouterState state) =>
       const TeacherProfileView();
+}
+
+class NoticeBoardScreenRoute extends GoRouteData with _$NoticeBoardScreenRoute {
+  const NoticeBoardScreenRoute();
+  static const path = '/notice';
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const NoticeBoardScreen();
 }
 
 ////////////////////////////////////// AUTH ////////////////////////////////////

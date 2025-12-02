@@ -6,9 +6,9 @@ import 'dart:convert';
 
 class Config {
 
-  static const String getUrlApi = "https://api.aceventura.in/demo/evolvuURL/get_url";
-  //
-  // static const String getUrlApi = "https://api.aceventura.in/evolvuURL/get_url";
+  // static const String getUrlApi = "https://api.aceventura.in/demo/evolvuURL/get_url";
+
+  static const String getUrlApi = "https://api.aceventura.in/evolvuURL/get_url";
 
   static String? dynamicEndpoint;
 

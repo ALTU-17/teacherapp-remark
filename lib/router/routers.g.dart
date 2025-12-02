@@ -141,6 +141,11 @@ RouteBase get $homeShellRoute => ShellRouteData.$route(
           name: 'Profile',
           factory: _$TeacherProfileRoute._fromState,
         ),
+        GoRouteData.$route(
+          path: '/notice',
+          name: 'notice',
+          factory: _$NoticeBoardScreenRoute._fromState,
+        ),
       ],
     );
 
@@ -612,6 +617,30 @@ mixin _$TeacherProfileRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/teacher_profile',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+
+mixin _$NoticeBoardScreenRoute on GoRouteData {
+  static NoticeBoardScreenRoute _fromState(GoRouterState state) =>
+       NoticeBoardScreenRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/notice',
       );
 
   @override

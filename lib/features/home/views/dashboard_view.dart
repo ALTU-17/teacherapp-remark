@@ -60,6 +60,30 @@ class DashboardView extends ConsumerWidget {
       'label': 'Smart Chat',
       'page': SmartChatRoute().location
     },
+    // {
+    //   'icon': 'assets/file_word.png',
+    //   'label': 'Class Performance',
+    //   'isNew': true,
+    //   'page': SmartChatRoute().location
+    // },
+    // {
+    //   'icon': 'assets/file_word.png',
+    //   'label': 'Question Papers',
+    //   'isNew': true,
+    //   'page': SmartChatRoute().location
+    // },
+    // {
+    //   'icon': 'assets/file_word.png',
+    //   'label': 'Academic Timetable',
+    //   'isNew': true,
+    //   'page': SmartChatRoute().location
+    // },
+    // {
+    //   'icon': 'assets/file_word.png',
+    //   'label': 'Class Substitution',
+    //   'isNew': true,
+    //   'page': SmartChatRoute().location
+    // },
     // {'icon': 'assets/chat.png', 'label': 'Smart Chat', 'page': const SmartChatScreen(), 'isNew': true},
     // {'icon': 'assets/curriculum.png', 'label': 'Curriculum', 'page': const CurriculumScreen()},
   ];
@@ -268,37 +292,37 @@ class DashboardView extends ConsumerWidget {
                  SizedBox(height: 80.h),
 
                  // Version update card
-                 if(packageInfoVar != lattest_androidVersion)
-                   Center(
-                     child: InkWell(
-                       onTap: () {
-                         _launchURL();
-                       },
-                       child: Card(
-                         color: Colors.yellow.shade600,
-                         shape: RoundedRectangleBorder(
-                           borderRadius: BorderRadius.circular(10),
-                         ),
-                         elevation: 2,
-                         child: Padding(
-                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                           child: Row(
-                             children: [
-                               Icon(Icons.crisis_alert),
-                               Text(" You have newer version of the app to download "),
-                               Icon(Icons.arrow_circle_right_outlined),
-                             ],
-                           ),
-                         ),
-                       ),
-                     ),
-                   ),
+                 // if(packageInfoVar != lattest_androidVersion)
+                 //   Center(
+                 //     child: InkWell(
+                 //       onTap: () {
+                 //         _launchURL();
+                 //       },
+                 //       child: Card(
+                 //         color: Colors.yellow.shade600,
+                 //         shape: RoundedRectangleBorder(
+                 //           borderRadius: BorderRadius.circular(10),
+                 //         ),
+                 //         elevation: 2,
+                 //         child: Padding(
+                 //           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                 //           child: Row(
+                 //             children: [
+                 //               Icon(Icons.crisis_alert),
+                 //               Text(" You have newer version of the app to download "),
+                 //               Icon(Icons.arrow_circle_right_outlined),
+                 //             ],
+                 //           ),
+                 //         ),
+                 //       ),
+                 //     ),
+                 //   ),
 
                  SizedBox(height: 10.h),
 
                  // Birthday Card - MOVED ABOVE TEACHER CARD
                  // if (isBirthdayToday && birthdayStudentNames.isNotEmpty)
-                   BirthDayCard(context),
+                 //   BirthDayCard(context),
                  SizedBox(height: 5.h),
                  // Teacher Profile Card
                  Container(
@@ -365,7 +389,7 @@ class DashboardView extends ConsumerWidget {
                    ),
                  ),
 
-                 _buildExamCard(),
+                 // _buildExamCard(),
 
                  const SizedBox(height: 10),
                  Center(
@@ -672,21 +696,20 @@ class DashboardView extends ConsumerWidget {
         children: [
           Stack(
             children: [
-              Image.asset(icon, width: 40, height: 40), // Activity Icon
+              Image.asset(icon, width: 95, height: 40), // Activity Icon
               if (isNew)
                 Positioned(
                   top: 0,
                   right: 0,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
                       'New',
-                      style: TextStyle(color: Colors.white, fontSize: 10),
+                      style: TextStyle(color: Colors.white, fontSize: 8),
                     ),
                   ),
                 ),

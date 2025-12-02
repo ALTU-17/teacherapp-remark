@@ -36,7 +36,7 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
+        versionCode = 49
         versionName = flutter.versionName
     }
 
@@ -55,6 +55,11 @@ android {
             signingConfig signingConfigs.release
             minifyEnabled false
             shrinkResources false
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging false
         }
     }
 }

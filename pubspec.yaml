@@ -21,6 +21,11 @@ flutter_native_splash:
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 
+# Developed
+# Lesson plan Pending Approval
+# Teacher note end date alert
+# Leave Approval Notifications
+# Homework check reminder
 
 #  Create & lesson plan reminder > if teacher not sent lp plan for approval.
 #  self reminder > Teacher note end date + Lib book due date reminder + lesson plan reminder + Pending fee reminder (class teacher)
@@ -78,8 +83,8 @@ dependencies:
   flutter_downloader: ^1.12.0
   freezed_annotation: ^3.0.0
   http: ^1.5.0
-  intl: 0.19.0
-  form_builder_validators: ^10.0.0
+  intl: 0.20.2
+  form_builder_validators: ^11.1.2
   json_annotation: ^4.9.0
   lottie: ^3.3.1
   image_cropper: ^9.1.0
@@ -165,3 +170,4 @@ flutter:
   assets:
     - assets/
     - assets/share.png
+    - assets/file_word.png
