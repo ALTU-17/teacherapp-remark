@@ -29,12 +29,18 @@ class DailyAttendDashboardView extends HookConsumerWidget {
         firstDate: DateTime(2023),
         lastDate: DateTime.now(),
       );
+
       if (picked != null) {
-        selectedDate.value =
-        "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-        dateController.text = selectedDate.value!;
+        final formattedDate =
+            "${picked.day.toString().padLeft(2, '0')}-"
+            "${picked.month.toString().padLeft(2, '0')}-"
+            "${picked.year}";
+
+        selectedDate.value = formattedDate;
+        dateController.text = formattedDate;
       }
     }
+
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -56,7 +62,7 @@ class DailyAttendDashboardView extends HookConsumerWidget {
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(20.w),
+          padding: EdgeInsets.all(15.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -188,7 +194,7 @@ class StudentList extends HookConsumerWidget {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true), // Confirm
-              child: const Text("Yes"),
+              child: const Text("Yes",style: TextStyle(color: Colors.red),),
             ),
           ],
         ),
@@ -215,7 +221,7 @@ class StudentList extends HookConsumerWidget {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true), // Confirm
-              child: const Text("Yes"),
+              child: const Text("Yes",style: TextStyle(color: Colors.green),),
             ),
           ],
         ),
@@ -311,6 +317,7 @@ class StudentList extends HookConsumerWidget {
               ),
             ),
 
+            SizedBox(height: 5),
             /// Student List
             Expanded(
               child: Scrollbar(
@@ -329,34 +336,15 @@ class StudentList extends HookConsumerWidget {
 
             /// Buttons Row (Update on left, Delete on right if available)
             /// Buttons Row (Update on left, Delete on right if available)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 26, 134, 222),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: 8.h, // smaller height
-                      ),
-                      minimumSize: Size(0, 40.h), // fix small height
-                    ),
-                    onPressed: onUpdate,
-                    child: const Text(
-                      "Update",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                if (sortedStudents.first.deleteBtn == '1')
+            Padding(
+              padding: const EdgeInsets.only(top: 10.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 220, 53, 69),
+                        backgroundColor: const Color.fromARGB(255, 26, 134, 222),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
@@ -365,14 +353,36 @@ class StudentList extends HookConsumerWidget {
                         ),
                         minimumSize: Size(0, 40.h), // fix small height
                       ),
-                      onPressed: onDelete,
+                      onPressed: onUpdate,
                       child: const Text(
-                        "Delete",
+                        "Update",
                         style: TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
                   ),
-              ],
+                  SizedBox(width: 10.w),
+                  if (sortedStudents.first.deleteBtn == '1')
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 220, 53, 69),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: 8.h, // smaller height
+                          ),
+                          minimumSize: Size(0, 40.h), // fix small height
+                        ),
+                        onPressed: onDelete,
+                        child: const Text(
+                          "Delete",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         );
@@ -383,6 +393,7 @@ class StudentList extends HookConsumerWidget {
     );
   }
 }
+
 
 class StudentTile extends HookConsumerWidget {
   final StudentBody studentBody;

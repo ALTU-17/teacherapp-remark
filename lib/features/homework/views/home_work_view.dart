@@ -234,7 +234,7 @@ class HomeWorkView extends HookConsumerWidget {
       if (fileName.toLowerCase().contains('.jpg') ||
           fileName.toLowerCase().contains('.png') ||
           fileName.toLowerCase().contains('.jpeg')) {
-        return const Icon(Icons.image, color: Colors.redAccent, size: 24);
+        return const Icon(Icons.image, color: Colors.blue, size: 24);
       } else if (fileName.toLowerCase().contains('.pdf')) {
         return const Icon(Icons.picture_as_pdf, color: Colors.red, size: 24);
       } else if (fileName.toLowerCase().contains('.doc') ||
@@ -378,8 +378,8 @@ class HomeWorkView extends HookConsumerWidget {
                 final files = (snapshot.data ?? [])
                     .where((u) => (u).trim().isNotEmpty)
                     .where((u) => u.split('/').isNotEmpty
-                        ? u.split('/').last.trim().isNotEmpty
-                        : false)
+                    ? u.split('/').last.trim().isNotEmpty
+                    : false)
                     .toList();
                 if (files.isEmpty) {
                   return const SizedBox.shrink();
@@ -389,7 +389,7 @@ class HomeWorkView extends HookConsumerWidget {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   padding:
-                      EdgeInsets.symmetric(horizontal: 15.w, vertical: 4.h),
+                  EdgeInsets.symmetric(horizontal: 15.w, vertical: 4.h),
                   itemCount: files.length,
                   itemBuilder: (context, index) {
                     final fileUrl = files[index];
@@ -418,7 +418,7 @@ class HomeWorkView extends HookConsumerWidget {
                             fileName.isNotEmpty)
                           IconButton(
                             icon: const Icon(Icons.remove_red_eye,
-                                color: Colors.green, size: 20),
+                                color: Colors.blue, size: 20),
                             onPressed: () {
                               // Utils.debLog(fileName);
                               Utils.openFileView(fileUrl);
@@ -455,7 +455,7 @@ class HomeWorkView extends HookConsumerWidget {
                 onPressed: onUpdatePressed,
                 style: ElevatedButton.styleFrom(
                   padding:
-                      EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
+                  EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8.r),
                   ),
@@ -488,6 +488,7 @@ class StudentsViewList extends HookConsumerWidget {
   final String searchQuery;
   final void Function(HomeworkStatus status) onChecked;
   final Map<String, String> selectedStatuses;
+
   const StudentsViewList({
     super.key,
     required this.homework,
@@ -500,36 +501,39 @@ class StudentsViewList extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hsStatus = ref.watch(hSStatusProvider(homework));
 
-    // Filter students based on search query
     List<HomeworkStudentStatus> filterStudents(
         List<HomeworkStudentStatus> students, String query) {
       if (query.isEmpty) return students;
+      final q = query.toLowerCase().trim();
       return students.where((student) {
-        final fullName = '${student.firstName ?? ''} ${student.lastName ?? ''}'
-            .toLowerCase()
-            .trim();
-        return fullName.contains(query.toLowerCase());
+        final fullName =
+        '${student.firstName ?? ""} ${student.lastName ?? ""}'.toLowerCase();
+        return fullName.contains(q);
       }).toList();
     }
 
     return hsStatus.when(
       data: (data) {
         final filteredData = filterStudents(data, searchQuery);
+
         return ListView.builder(
           padding: EdgeInsets.symmetric(horizontal: 10.w),
           itemCount: filteredData.length,
-          itemBuilder: (BuildContext context, int index) {
-            final h = filteredData[index];
+          itemBuilder: (context, index) {
+            final student = filteredData[index];
+
             return HomeworkVCard(
-              h,
-              onChecked,
-              selectedStatus: selectedStatuses[h.studentId],
+              student, // 1st positional
+                  (newStatus) => onChecked(newStatus), // 2nd positional
+              selectedStatus: selectedStatuses[student.studentId], // named
             );
+
           },
         );
       },
-      error: (error, stackTrace) => Center(child: Text(error.toString())),
+      error: (_, __) => const Center(child: Text("Error loading data")),
       loading: () => const Center(child: CircularProgressIndicator()),
     );
   }
 }
+

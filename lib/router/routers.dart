@@ -12,6 +12,7 @@ import 'package:teacherapp/views/home/timeTable/timeTableTecaher.dart';
 import '../features/SmartChatWebView.dart';
 import '../features/auth/views/views.dart';
 import '../features/home/views/notice_board.dart';
+import '../features/home/views/teacher_id.dart';
 import '../features/home/views/views.dart';
 import '../features/homework/models/models.dart';
 import '../features/homework/views/views.dart';
@@ -172,6 +173,42 @@ class SmartChatRoute extends GoRouteData with _$SmartChatRoute {
     return const SmartChatPage();
   }
 }
+final dummyStaff = Staff(
+  name: "Meenakshi Chaudhary",
+  contact: "8793593391",
+  emergencyContact: "8793593395",
+  gender: "Female",
+  bloodGroup: "O+",
+  employeeId: "131",
+  currentAddress: "D1 / 904, Pride Aashiyana Hsg. Society, Porwal Road, Lohegaon 411047",
+  permanentAddress: "test",
+  declare: true,
+);
+
+class IDRoute extends GoRouteData with _$IDRoute {
+  const IDRoute();
+
+  static const path = 'id';
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+
+    final dummyStaff = Staff(
+      name: "Kavita",
+      contact: "976220055",
+      emergencyContact: "9766220055",
+      gender: "Female",
+      bloodGroup: "O+",
+      employeeId: "131",
+      currentAddress: "D1 / 904, Pride Aashiyana Hsg. Society, Porwal Road, Lohegaon 411047",
+      permanentAddress: "test",
+      declare: true,
+    );
+
+    return StaffIdCardPage(staff: dummyStaff);
+  }
+}
+
 
 class TeacherNoteViewedByRoute extends GoRouteData
     with _$TeacherNoteViewedByRoute {
