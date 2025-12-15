@@ -30,17 +30,28 @@ class AttendanceP extends _$AttendanceP {
     return AttendanceState(students: students);
   }
 
-  toggleStudentSelection(Students student) {
-    final selectedStudents =
-    List<Students>.from(state.requireValue.selectedStudents);
-    if (selectedStudents.contains(student)) {
-      selectedStudents.remove(student);
-    } else {
-      selectedStudents.add(student);
-    }
-    state = AsyncData(
-        state.requireValue.copyWith(selectedStudents: selectedStudents));
+  // toggleStudentSelection(Students student) {
+  //   final selectedStudents =
+  //   List<Students>.from(state.requireValue.selectedStudents);
+  //   if (selectedStudents.contains(student)) {
+  //     selectedStudents.remove(student);
+  //   } else {
+  //     selectedStudents.add(student);
+  //   }
+  //   state = AsyncData(
+  //       state.requireValue.copyWith(selectedStudents: selectedStudents));
+  // }
+
+  void toggleStudentSelection(Students updatedStudent) {
+    state = state.whenData((data) {
+      final updatedList = data.students.map((s) {
+        return s.studentId == updatedStudent.studentId ? updatedStudent : s;
+      }).toList();
+
+      return data.copyWith(students: updatedList);
+    });
   }
+
 
   bool isStudentSelected(Students student) {
     return state.requireValue.selectedStudents.contains(student);
@@ -54,11 +65,16 @@ class AttendanceP extends _$AttendanceP {
     final selectedStudents = currentState.selectedStudents;
     final allStudents = currentState.students;
 
+    final absentStudents = state.value!.students
+        .where((s) => s.attendanceStatus == "1")
+        .toList();
+
+
     state = AsyncLoading();
 
     try {
       // Prepare students data based on selection
-      final studentsToUpdate = _prepareStudentsForUpdate(allStudents, selectedStudents);
+      final studentsToUpdate = _prepareStudentsForUpdate(allStudents, absentStudents);
 
       // Create attendance data and make API call
       final success = await _updateAttendanceData(

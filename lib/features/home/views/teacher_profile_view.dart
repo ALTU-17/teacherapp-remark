@@ -83,7 +83,7 @@ class TeacherProfileView extends HookConsumerWidget {
     onUpdate() async {
       if (key.currentState?.saveAndValidate() ?? false) {
         final selectedQuals =
-            key.currentState?.value['academic_qualification'] as List<String>?;
+        key.currentState?.value['academic_qualification'] as List<String>?;
         if (selectedQuals == null) return;
 
         final x = TeacherDetails.fromJson({
@@ -100,6 +100,19 @@ class TeacherProfileView extends HookConsumerWidget {
         Utils.toast("Please fill all required fields.");
       }
     }
+
+    String formatDate(String? date) {
+      if (date == null || date.isEmpty) return '';
+      try {
+        final parsed = DateTime.parse(date);
+        return "${parsed.day.toString().padLeft(2, '0')}-"
+            "${parsed.month.toString().padLeft(2, '0')}-"
+            "${parsed.year}";
+      } catch (e) {
+        return date; // return original if parse fails
+      }
+    }
+
 
     Widget buildProfilePicture() {
       final imageName = auth.teacherDetails?.teacherImageName;
@@ -160,14 +173,14 @@ class TeacherProfileView extends HookConsumerWidget {
                   ? FileImage(File(image.value!.path))
                   : NetworkImage(url) as ImageProvider,
             ),
-            InkWell(
-              onTap: onImagePick,
-              child: CircleAvatar(
-                radius: 18.r,
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.add, color: Colors.black),
-              ),
-            ),
+            // InkWell(
+            //   onTap: onImagePick,
+            //   child: CircleAvatar(
+            //     radius: 18.r,
+            //     backgroundColor: Colors.grey.shade300,
+            //     child: const Icon(Icons.add, color: Colors.black),
+            //   ),
+            // ),
           ],
         ),
       );
@@ -212,15 +225,15 @@ class TeacherProfileView extends HookConsumerWidget {
             options: qualifications
                 .map(
                   (item) => FormBuilderChipOption(
-                    value: item,
-                    child: Text(item, style: TextStyle(fontSize: 12.sp)),
-                  ),
-                )
+                value: item,
+                child: Text(item, style: TextStyle(fontSize: 12.sp)),
+              ),
+            )
                 .toList(),
             initialValue: auth.teacherDetails?.academicQual
-                    ?.split(',')
-                    .map((e) => e.trim())
-                    .toList() ??
+                ?.split(',')
+                .map((e) => e.trim())
+                .toList() ??
                 [],
             selectedColor: Colors.blue.shade100,
             spacing: 5.w,
@@ -269,19 +282,28 @@ class TeacherProfileView extends HookConsumerWidget {
                     buildProfilePicture(),
                     SizedBox(height: 30.h),
                     _buildRowField('Staff\'s Name',
-                        auth.teacherDetails?.name ?? '', 'name',
+                        auth.teacherDetails?.name ?? '', 'name',readOnly: true,
                         isRequired: true),
-                    _buildRowField('Date of Birth',
-                        auth.teacherDetails?.birthday ?? '', "birthday",
-                        isRequired: true, readOnly: true),
                     _buildRowField(
-                        'Date of Joining',
-                        auth.teacherDetails?.dateOfJoining ?? '',
-                        "date_of_joining",
-                        isRequired: true,
-                        readOnly: true),
+                      'Date of Birth',
+                      formatDate(auth.teacherDetails?.birthday),
+                      "birthday",
+                      isRequired: true,
+                      readOnly: true,
+                    ),
+
+                    _buildRowField(
+                      'Date of Joining',
+                      formatDate(auth.teacherDetails?.dateOfJoining),
+                      "date_of_joining",
+                      isRequired: true,
+                      readOnly: true,
+                    ),
+
                     _buildRowField('Designation',
                         auth.teacherDetails?.designation ?? '', "designation"),
+                    _buildRowField('Employee ID',
+                      auth.teacherDetails?.employeeId ?? '', "Employee ID",readOnly: true,isRequired: true,),
                     buildQualificationsSection(),
                     CustomDropdownField(
                       label: 'Professional Qualification',
@@ -365,20 +387,20 @@ class TeacherProfileView extends HookConsumerWidget {
   }
 
   Widget _buildRowField(
-    String label,
-    String value,
-    String name, {
-    bool isRequired = false,
-    bool readOnly = false,
-    bool isNumeric = false,
-  }) {
+      String label,
+      String value,
+      String name, {
+        bool isRequired = false,
+        bool readOnly = false,
+        bool isNumeric = false,
+      }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 130.w,
+            width: 110.w,
             child: RichText(
               text: TextSpan(
                 text: label,
@@ -388,11 +410,11 @@ class TeacherProfileView extends HookConsumerWidget {
                     color: Colors.black),
                 children: isRequired
                     ? [
-                        TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red, fontSize: 14.sp),
-                        )
-                      ]
+                  TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.red, fontSize: 14.sp),
+                  )
+                ]
                     : [],
               ),
             ),
@@ -404,11 +426,11 @@ class TeacherProfileView extends HookConsumerWidget {
               name: name,
               keyboardType: isNumeric ? TextInputType.number : null,
               inputFormatters:
-                  isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
+              isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding:
-                    EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+                EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r)),
               ),

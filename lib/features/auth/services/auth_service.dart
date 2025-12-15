@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 import 'package:teacherapp/config/utils.dart';
 
@@ -17,19 +19,91 @@ class AuthService {
       '/validate_teacher_user',
       data: FormData.fromMap({"user_id": userId}),
     );
+
+    final data = response.data;
+
+    // 🔥 NEW: save laravel_project_url separately
+    final laravelUrl = data['laravel_project_url'];
+
+    if (laravelUrl != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('laravel_base_url', laravelUrl);
+    }
+
     final verification =
-    TeacherVerification.fromJson(response.data).copyWith(userId: userId);
+    TeacherVerification.fromJson(data).copyWith(userId: userId);
+
     await userBox.put(
-        "teacherUserCache", TeacherUser(teacherVerification: verification));
+      "teacherUserCache",
+      TeacherUser(teacherVerification: verification),
+    );
+
     return verification;
   }
+  Future<String?> loginLaravelAndGetToken({
+    required String userId,
+    required String password,
+    required String shortName,
+    required String laravelBaseUrl,
+  }) async {
+    final url = '${laravelBaseUrl}login';
+
+    debugPrint('Laravel login URL: $url');
+    debugPrint('Laravel login body: user_id=$userId');
+
+    try {
+      final response = await apiClient.post(
+        url,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+        data: {
+          "user_id": userId,
+          "password": password,
+          // ❌ short_name NOT required for this API
+        },
+      );
+
+      debugPrint('Laravel status: ${response.statusCode}');
+      debugPrint('Laravel response: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final token = response.data['token'];
+        debugPrint('Laravel TOKEN: $token');
+        return token;
+      }
+    } catch (e, st) {
+      debugPrint('Laravel login error: $e');
+      debugPrintStack(stackTrace: st);
+      Utils.toast("Laravel login failed");
+    }
+
+    return null;
+  }
+
+
+
 
   TeacherUser? getCachedUser() => userBox.get('teacherUserCache');
 
   Future<bool> logout() async {
+    // Clear Hive
     await userBox.delete("teacherUserCache");
+
+    // Clear SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('laravel_base_url');
+
+    // If you want full cleanup (optional)
+    await prefs.clear();
+
     return true;
   }
+
 
   Future<bool> changePassword(ForgotPBody body) async {
     final cachedUser = getCachedUser();

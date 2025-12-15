@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teacherapp/features/auth/providers/auth_provider.dart';
 
 class LogoutConfirmationDialog extends ConsumerWidget {
@@ -41,9 +42,14 @@ class LogoutConfirmationDialog extends ConsumerWidget {
             'Logout',
             style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
           ),
-          onPressed: () {
-            authP.logOut();
+          onPressed: () async {
+            await ref.read(authProvider.notifier).logOut();
+
+            if (context.mounted) {
+              context.go('/login'); // NOT push
+            }
           },
+
         ),
       ],
     );

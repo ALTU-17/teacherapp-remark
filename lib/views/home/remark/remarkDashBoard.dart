@@ -61,7 +61,7 @@ class RemarkDashBoardView extends HookConsumerWidget {
                         },
                       )
                     : Center(
-                        child: Text('No remarks found',
+                        child: Text('Remarks not found',
                             style: TextStyle(fontSize: 16.sp))),
               ),
             ),

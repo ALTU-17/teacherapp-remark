@@ -42,7 +42,11 @@ class TeacherNoteDashBoardView extends HookConsumerWidget {
               children: [
                 SizedBox(height: 160.h),
                 Expanded(
-                  child: ListView.builder(
+                  child: notes.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (err, _) => Center(child: Text('Error: $err')),
+                    data: (notes) => notes.isNotEmpty
+                        ? ListView.builder(
                     padding:
                     EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.h),
                     itemCount: data.length,
@@ -50,7 +54,10 @@ class TeacherNoteDashBoardView extends HookConsumerWidget {
                       final note = data[index];
                       return NoteCard(note: note);
                     },
-                  ),
+                  ): Center(
+                        child: Text('Teacher Notes not found',
+                            style: TextStyle(fontSize: 16.sp))),
+                ),
                 ),
               ],
             ),

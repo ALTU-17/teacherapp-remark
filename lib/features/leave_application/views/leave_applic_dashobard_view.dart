@@ -51,8 +51,8 @@ class LeaveApplicationDashBoardView extends ConsumerWidget {
                   if (state.leaves.isEmpty) {
                     return Center(
                       child: Text(
-                        'No leave applications',
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp),
+                        'Leave applications not found',
+                        style: TextStyle(color: Colors.black, fontSize: 16.sp),
                       ),
                     );
                   }

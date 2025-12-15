@@ -98,7 +98,7 @@ dependencies:
   flutter_local_notifications: ^19.4.1
   url_launcher: ^6.3.2
   crop_your_image: ^0.7.0
-
+  shared_preferences: ^2.5.4
 
 dev_dependencies:
 
@@ -170,4 +170,4 @@ flutter:
   assets:
     - assets/
     - assets/share.png
-    - assets/file_word.png
+    - assets/user_check.jpeg
