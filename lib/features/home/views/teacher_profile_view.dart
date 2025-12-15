@@ -4,7 +4,6 @@ import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:teacherapp/common/customDropDown.dart';
 import 'package:teacherapp/config/utils.dart';
@@ -12,20 +11,74 @@ import 'package:teacherapp/features/auth/models/teacher_user.dart';
 import 'package:form_builder_validators/form_builder_validators.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:teacherapp/features/home/views/teacher_id.dart';
 import 'package:teacherapp/router/routers.dart';
-import '../../../views/home/crop.dart';
 import '../../auth/auth.dart';
-import 'package:crop_your_image/crop_your_image.dart';
+
+
+final teacherLaravelProvider = FutureProvider<Teacher>((ref) async {
+  final auth = ref.watch(authProvider).requireValue;
+  final service = ref.watch(staffApiProvider);
+
+  final regId = auth.regId;
+  if (regId == null || regId.isEmpty) {
+    throw Exception('RegId missing');
+  }
+
+  return service.getTeacher(
+    regId: regId,
+    token: 'HARDCODED_TOKEN',
+  );
+});
+
+
 
 class TeacherProfileView extends HookConsumerWidget {
   const TeacherProfileView({super.key});
 
   @override
-  Widget build(BuildContext context, ref) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider).requireValue;
+
+    return _TeacherProfileForm(auth: auth);
+  }
+}
+
+
+
+class _TeacherProfileForm extends HookConsumerWidget {
+  final TeacherUser auth;
+
+  const _TeacherProfileForm({required this.auth});
+
+  Future<void> _refreshTeacher(BuildContext context, WidgetRef ref) async {
+    try {
+      final teacher = await ref.read(teacherLaravelProvider.future);
+
+      // sync fresh Laravel data into authProvider
+      ref.read(authProvider.notifier)
+          .refreshTeacherFromLaravel(teacher);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to refresh profile')),
+      );
+    }
+  }
+
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final key = useTextFieldGlobalKey();
+
     final auth = ref.watch(authProvider).requireValue;
     final authP = ref.read(authProvider.notifier);
-    final key = useTextFieldGlobalKey();
-    final image = useState<XFile?>(null);
+    // final image = useState<XFile?>(null);
+
+
+
+    print('PROFILE PHONE: ${auth.teacherDetails?.phone}');
+    print('PROFILE BG: ${auth.teacherDetails?.bloodGroup}');
+
 
     final List<String> qualifications = [
       'HSc',
@@ -83,7 +136,7 @@ class TeacherProfileView extends HookConsumerWidget {
     onUpdate() async {
       if (key.currentState?.saveAndValidate() ?? false) {
         final selectedQuals =
-            key.currentState?.value['academic_qualification'] as List<String>?;
+        key.currentState?.value['academic_qualification'] as List<String>?;
         if (selectedQuals == null) return;
 
         final x = TeacherDetails.fromJson({
@@ -101,54 +154,68 @@ class TeacherProfileView extends HookConsumerWidget {
       }
     }
 
+    String formatDate(String? date) {
+      if (date == null || date.isEmpty) return '';
+      try {
+        final parsed = DateTime.parse(date);
+        return "${parsed.day.toString().padLeft(2, '0')}-"
+            "${parsed.month.toString().padLeft(2, '0')}-"
+            "${parsed.year}";
+      } catch (e) {
+        return date; // return original if parse fails
+      }
+    }
+
+
     Widget buildProfilePicture() {
       final imageName = auth.teacherDetails?.teacherImageName;
       final url = '${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName';
+      print('teacher_image body: ${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName');
 
-      Future<void> onImagePick() async {
-        try {
-          final picker = ImagePicker();
-          final XFile? pickedFile = await picker.pickImage(
-            source: ImageSource.gallery,
-            imageQuality: 90, // optional: reduce size
-          );
-
-          if (pickedFile == null) return;
-
-          // Read bytes from picked image
-          final bytes = await pickedFile.readAsBytes();
-
-          // Open crop screen and get back cropped bytes (Uint8List?)
-          final Uint8List? cropped = await Navigator.of(context).push<Uint8List?>(
-            MaterialPageRoute(
-              builder: (_) => CropScreen(
-                imageData: bytes,
-              ),
-            ),
-          );
-
-          if (cropped == null) {
-            // user cancelled cropping
-            return;
-          }
-
-          // Save cropped bytes to a temporary file so your existing upload method can use a File
-          final tempDir = await getTemporaryDirectory();
-          final tempFile = File('${tempDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
-          await tempFile.writeAsBytes(cropped, flush: true);
-
-          // Update UI
-          image.value = XFile(tempFile.path);
-
-          // Upload using your notifier method
-          await authP.profileImageUpload(tempFile);
-        } catch (e, st) {
-          debugPrint('Image pick / crop error: $e\n$st');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to pick/crop image')),
-          );
-        }
-      }
+      // Future<void> onImagePick() async {
+      //   try {
+      //     final picker = ImagePicker();
+      //     final XFile? pickedFile = await picker.pickImage(
+      //       source: ImageSource.gallery,
+      //       imageQuality: 90, // optional: reduce size
+      //     );
+      //
+      //     if (pickedFile == null) return;
+      //
+      //     // Read bytes from picked image
+      //     final bytes = await pickedFile.readAsBytes();
+      //
+      //     // Open crop screen and get back cropped bytes (Uint8List?)
+      //     final Uint8List? cropped = await Navigator.of(context).push<Uint8List?>(
+      //       MaterialPageRoute(
+      //         builder: (_) => CropScreen(
+      //           imageData: bytes,
+      //         ),
+      //       ),
+      //     );
+      //
+      //     if (cropped == null) {
+      //       // user cancelled cropping
+      //       return;
+      //     }
+      //
+      //     // Save cropped bytes to a temporary file so your existing upload method can use a File
+      //     final tempDir = await getTemporaryDirectory();
+      //     final tempFile = File('${tempDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      //     await tempFile.writeAsBytes(cropped, flush: true);
+      //
+      //     // Update UI
+      //     image.value = XFile(tempFile.path);
+      //
+      //     // Upload using your notifier method
+      //     await authP.profileImageUpload(tempFile);
+      //   } catch (e, st) {
+      //     debugPrint('Image pick / crop error: $e\n$st');
+      //     ScaffoldMessenger.of(context).showSnackBar(
+      //       const SnackBar(content: Text('Failed to pick/crop image')),
+      //     );
+      //   }
+      // }
 
       return Center(
         child: Stack(
@@ -156,18 +223,17 @@ class TeacherProfileView extends HookConsumerWidget {
           children: [
             CircleAvatar(
               radius: 70.r,
-              backgroundImage: image.value != null
-                  ? FileImage(File(image.value!.path))
-                  : NetworkImage(url) as ImageProvider,
+              backgroundImage:
+              NetworkImage(url) as ImageProvider,
             ),
-            InkWell(
-              onTap: onImagePick,
-              child: CircleAvatar(
-                radius: 18.r,
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.add, color: Colors.black),
-              ),
-            ),
+            // InkWell(
+            //   onTap: onImagePick,
+            //   child: CircleAvatar(
+            //     radius: 18.r,
+            //     backgroundColor: Colors.grey.shade300,
+            //     child: const Icon(Icons.add, color: Colors.black),
+            //   ),
+            // ),
           ],
         ),
       );
@@ -212,15 +278,15 @@ class TeacherProfileView extends HookConsumerWidget {
             options: qualifications
                 .map(
                   (item) => FormBuilderChipOption(
-                    value: item,
-                    child: Text(item, style: TextStyle(fontSize: 12.sp)),
-                  ),
-                )
+                value: item,
+                child: Text(item, style: TextStyle(fontSize: 12.sp)),
+              ),
+            )
                 .toList(),
             initialValue: auth.teacherDetails?.academicQual
-                    ?.split(',')
-                    .map((e) => e.trim())
-                    .toList() ??
+                ?.split(',')
+                .map((e) => e.trim())
+                .toList() ??
                 [],
             selectedColor: Colors.blue.shade100,
             spacing: 5.w,
@@ -259,102 +325,122 @@ class TeacherProfileView extends HookConsumerWidget {
                     color: Colors.black12, blurRadius: 10, spreadRadius: 2),
               ],
             ),
-            child: SingleChildScrollView(
-              child: FormBuilder(
-                key: key,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    buildProfilePicture(),
-                    SizedBox(height: 30.h),
-                    _buildRowField('Staff\'s Name',
-                        auth.teacherDetails?.name ?? '', 'name',
-                        isRequired: true),
-                    _buildRowField('Date of Birth',
-                        auth.teacherDetails?.birthday ?? '', "birthday",
-                        isRequired: true, readOnly: true),
-                    _buildRowField(
+            child: RefreshIndicator(
+              onRefresh: () => _refreshTeacher(context, ref),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(), // 🔑 IMPORTANT
+                child: FormBuilder(
+                  key: key,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      buildProfilePicture(),
+                      SizedBox(height: 30.h),
+                      _buildRowField('Staff\'s Name',
+                          auth.teacherDetails?.name ?? '', 'name',readOnly: true,
+                          isRequired: true),
+                      _buildRowField(
+                        'Date of Birth',
+                        formatDate(auth.teacherDetails?.birthday),
+                        "birthday",
+                        isRequired: true,
+                        readOnly: true,
+                      ),
+
+                      _buildRowField(
                         'Date of Joining',
-                        auth.teacherDetails?.dateOfJoining ?? '',
+                        formatDate(auth.teacherDetails?.dateOfJoining),
                         "date_of_joining",
                         isRequired: true,
-                        readOnly: true),
-                    _buildRowField('Designation',
-                        auth.teacherDetails?.designation ?? '', "designation"),
-                    buildQualificationsSection(),
-                    CustomDropdownField(
-                      label: 'Professional Qualification',
-                      options: profSubjects,
-                      initialValue: auth.teacherDetails?.professionalQual ?? '',
-                      name: 'professional_qual',
-                    ),
-                    _buildRowField('Subject for D.Ed/B.Ed',
-                        auth.teacherDetails?.specialSub ?? '', 'special_sub'),
-                    CustomDropdownField(
-                      label: 'Training Status',
-                      options: trainingStatuses,
-                      isRequired: true,
-                      initialValue: auth.teacherDetails?.trained ?? '',
-                      name: 'trained',
-                    ),
-                    _buildRowField('Experience',
-                        auth.teacherDetails?.experience ?? '', "experience",
-                        isRequired: true),
-                    CustomDropdownField(
-                      label: 'Gender',
-                      options: genderOptions,
-                      isRequired: true,
-                      initialValue: auth.teacherDetails?.sex ?? '',
-                      name: 'sex',
-                    ),
-                    CustomDropdownField(
-                      label: 'Blood Group',
-                      options: bloodGroups,
-                      initialValue: auth.teacherDetails?.bloodGroup ?? '',
-                      name: 'blood_group',
-                    ),
-                    _buildRowField('Religion',
-                        auth.teacherDetails?.religion ?? '', "religion"),
-                    _buildRowField('Address',
-                        auth.teacherDetails?.address ?? '', "address",
-                        isRequired: true),
-                    _buildRowField(
-                      'Mobile Number',
-                      auth.teacherDetails?.phone ?? '',
-                      "phone",
-                      isRequired: true,
-                      isNumeric: true,
-                    ),
-                    _buildRowField(
-                      'Aadhar Card No.',
-                      auth.teacherDetails?.aadharCardNo ?? '',
-                      "aadhar_card_no",
-                      isNumeric: true,
-                    ),
-                    _buildRowField(
-                        'Email ID', auth.teacherDetails?.email ?? '', "email"),
-                    SizedBox(height: 10.h),
-                    Center(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 30.w, vertical: 12.h),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15.r)),
-                          backgroundColor: const Color(0xFF4E9DDE),
-                        ),
-                        onPressed: onUpdate,
-                        child: Text(
-                          'Update',
-                          style: TextStyle(
-                              fontSize: 14.sp,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600),
+                        readOnly: true,
+                      ),
+
+                      _buildRowField('Designation',
+                          auth.teacherDetails?.designation ?? '', "designation"),
+                      _buildRowField('Employee ID',
+                        auth.teacherDetails?.employeeId ?? '', "Employee ID",readOnly: true,isRequired: true,),
+                      buildQualificationsSection(),
+                      CustomDropdownField(
+                        label: 'Professional Qualification',
+                        options: profSubjects,
+                        initialValue: auth.teacherDetails?.professionalQual ?? '',
+                        name: 'professional_qual',
+                      ),
+                      _buildRowField('Subject for D.Ed/B.Ed',
+                          auth.teacherDetails?.specialSub ?? '', 'special_sub'),
+                      CustomDropdownField(
+                        label: 'Training Status',
+                        options: trainingStatuses,
+                        isRequired: true,
+                        initialValue: auth.teacherDetails?.trained ?? '',
+                        name: 'trained',
+                      ),
+                      _buildRowField('Experience',
+                          auth.teacherDetails?.experience ?? '', "experience",
+                          isRequired: true),
+                      _buildRowField('Gender',
+                        auth.teacherDetails?.sex ?? '',
+                        "Sex",
+                        readOnly: true,
+                        // isRequired: true,
+                      ),
+                      // CustomDropdownField(
+                      //   label: 'Gender',
+                      //   options: genderOptions,
+                      //   isRequired: true,
+                      //   readOnly: true,
+                      //   initialValue: auth.teacherDetails?.sex ?? '',
+                      //   name: 'sex',
+                      // ),
+                      CustomDropdownField(
+                        label: 'Blood Group',
+                        options: bloodGroups,
+                        initialValue: auth.teacherDetails?.bloodGroup ?? '',
+                        name: 'blood_group',
+                      ),
+                      _buildRowField('Religion',
+                          auth.teacherDetails?.religion ?? '', "religion"),
+                      _buildRowField('Address',
+                          auth.teacherDetails?.address ?? '', "address",
+                          isRequired: true),
+                      _buildRowField(
+                        'Mobile Number',
+                        auth.teacherDetails?.phone ?? '',
+                        "phone",
+                        isRequired: true,
+                        isNumeric: true,
+                      ),
+                      _buildRowField(
+                        'Aadhar Card No.',
+                        auth.teacherDetails?.aadharCardNo ?? '',
+                        "aadhar_card_no",
+                        isNumeric: true,
+                      ),
+                      _buildRowField(
+                          'Email ID', auth.teacherDetails?.email ?? '', "email"),
+                      SizedBox(height: 10.h),
+                      Center(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30.w, vertical: 12.h),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15.r)),
+                            backgroundColor: const Color(0xFF4E9DDE),
+                          ),
+                          onPressed: onUpdate,
+                          child: Text(
+                            'Update',
+                            style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600),
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -365,20 +451,20 @@ class TeacherProfileView extends HookConsumerWidget {
   }
 
   Widget _buildRowField(
-    String label,
-    String value,
-    String name, {
-    bool isRequired = false,
-    bool readOnly = false,
-    bool isNumeric = false,
-  }) {
+      String label,
+      String value,
+      String name, {
+        bool isRequired = false,
+        bool readOnly = false,
+        bool isNumeric = false,
+      }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           SizedBox(
-            width: 130.w,
+            width: 110.w,
             child: RichText(
               text: TextSpan(
                 text: label,
@@ -388,11 +474,11 @@ class TeacherProfileView extends HookConsumerWidget {
                     color: Colors.black),
                 children: isRequired
                     ? [
-                        TextSpan(
-                          text: ' *',
-                          style: TextStyle(color: Colors.red, fontSize: 14.sp),
-                        )
-                      ]
+                  TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.red, fontSize: 14.sp),
+                  )
+                ]
                     : [],
               ),
             ),
@@ -404,11 +490,11 @@ class TeacherProfileView extends HookConsumerWidget {
               name: name,
               keyboardType: isNumeric ? TextInputType.number : null,
               inputFormatters:
-                  isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
+              isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
               decoration: InputDecoration(
                 isDense: true,
                 contentPadding:
-                    EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+                EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r)),
               ),

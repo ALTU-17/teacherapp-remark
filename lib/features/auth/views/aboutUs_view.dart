@@ -27,12 +27,12 @@ class AboutUsScreen extends HookConsumerWidget {
                 fit: BoxFit.cover,
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 0),
 
               Expanded(
                 child: Container(
                   margin:
-                      const EdgeInsets.symmetric(horizontal: 26, vertical: 10),
+                      const EdgeInsets.symmetric(horizontal: 26, vertical: 80),
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -43,7 +43,7 @@ class AboutUsScreen extends HookConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: const [
                         Text(
-                          'EvolvU Smart School App for Parents',
+                          'Evolvu - Smart Teacher App',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.blueAccent,
@@ -53,7 +53,13 @@ class AboutUsScreen extends HookConsumerWidget {
                         ),
                         SizedBox(height: 12),
                         Text(
-                          'EvolvU is the most effective way to assist in the progress of your child and connect with school real-time. Get all your school updates on EvolvU. We keep making it better for You with additional features in new releases.',
+                          'Allows teachers to powerfully manage their school work from within their mobile devices thereby giving them more freedom for other tasks.',
+                          style: TextStyle(fontSize: 15),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'We thank you, Teachers, for your support and helping us develop a better app.',
                           style: TextStyle(fontSize: 15),
                           textAlign: TextAlign.center,
                         ),
@@ -99,23 +105,23 @@ class AboutUsScreen extends HookConsumerWidget {
                         /// Dummy Google Play icon, you can link it or use custom asset
                         Icon(Icons.play_arrow, size: 28, color: Colors.green),
 
-                        SizedBox(height: 12),
-                        Text(
-                          'Follow Us:',
-                          style: TextStyle(fontSize: 14),
-                        ),
-                        SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.abc, color: Colors.blue),
-                            SizedBox(width: 12),
-                            Icon(Icons.facebook, color: Colors.blueAccent),
-                            SizedBox(width: 12),
-                            Icon(Icons.account_circle_rounded,
-                                color: Colors.red),
-                          ],
-                        ),
+                        // SizedBox(height: 12),
+                        // Text(
+                        //   'Follow Us:',
+                        //   style: TextStyle(fontSize: 14),
+                        // ),
+                        // SizedBox(height: 8),
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.center,
+                        //   children: [
+                        //     Icon(Icons.abc, color: Colors.blue),
+                        //     SizedBox(width: 12),
+                        //     Icon(Icons.facebook, color: Colors.blueAccent),
+                        //     SizedBox(width: 12),
+                        //     Icon(Icons.account_circle_rounded,
+                        //         color: Colors.red),
+                        //   ],
+                        // ),
                       ],
                     ),
                   ),

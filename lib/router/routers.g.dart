@@ -114,6 +114,10 @@ RouteBase get $homeShellRoute => ShellRouteData.$route(
               path: 'smart_chat',
               factory: _$SmartChatRoute._fromState,
             ),
+            GoRouteData.$route(
+              path: 'id',
+              factory: _$IDRoute._fromState,
+            ),
           ],
         ),
         GoRouteData.$route(
@@ -503,6 +507,29 @@ mixin _$SmartChatRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/dashbaord/smart_chat',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$IDRoute on GoRouteData {
+  static IDRoute _fromState(GoRouterState state) =>
+      const IDRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/dashbaord/id',
       );
 
   @override

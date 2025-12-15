@@ -12,6 +12,7 @@ import 'package:teacherapp/views/home/timeTable/timeTableTecaher.dart';
 import '../features/SmartChatWebView.dart';
 import '../features/auth/views/views.dart';
 import '../features/home/views/notice_board.dart';
+import '../features/home/views/teacher_id.dart';
 import '../features/home/views/views.dart';
 import '../features/homework/models/models.dart';
 import '../features/homework/views/views.dart';
@@ -172,6 +173,19 @@ class SmartChatRoute extends GoRouteData with _$SmartChatRoute {
     return const SmartChatPage();
   }
 }
+
+class IDRoute extends GoRouteData with _$IDRoute {
+  const IDRoute();
+
+  static const path = 'id';
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+
+    return StaffIdCardPage();
+  }
+}
+
 
 class TeacherNoteViewedByRoute extends GoRouteData
     with _$TeacherNoteViewedByRoute {

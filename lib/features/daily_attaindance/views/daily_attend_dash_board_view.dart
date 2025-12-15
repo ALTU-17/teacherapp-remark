@@ -29,19 +29,26 @@ class DailyAttendDashboardView extends HookConsumerWidget {
         firstDate: DateTime(2023),
         lastDate: DateTime.now(),
       );
+
       if (picked != null) {
-        selectedDate.value =
-        "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
-        dateController.text = selectedDate.value!;
+        final formattedDate =
+            "${picked.day.toString().padLeft(2, '0')}-"
+            "${picked.month.toString().padLeft(2, '0')}-"
+            "${picked.year}";
+
+        selectedDate.value = formattedDate;
+        dateController.text = formattedDate;
       }
     }
+
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
+
         title: const Text(
           "Daily Attendance",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: Colors.white,fontSize: 18),
         ),
         backgroundColor: const Color.fromARGB(255, 226, 25, 99),
         centerTitle: true,
@@ -56,86 +63,89 @@ class DailyAttendDashboardView extends HookConsumerWidget {
           ),
         ),
         child: Padding(
-          padding: EdgeInsets.all(20.w),
+          padding: EdgeInsets.all(1.w),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               /// Class & Date Selection
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "*Class",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 5.h),
-                        FormBuilderDropdown<ClassInfo>(
-                          name: 'class_selection',
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
+              Padding(
+                padding: const EdgeInsets.only(left: 10,right: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // const Text(
+                          //   "*Class",
+                          //   style: TextStyle(
+                          //     fontSize: 16,
+                          //     fontWeight: FontWeight.bold,
+                          //     color: Colors.white,
+                          //   ),
+                          // ),
+                          // SizedBox(height: 5.h),
+                          FormBuilderDropdown<ClassInfo>(
+                            name: 'class_selection',
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
                             ),
+                            hint: const Text("Select Class"),
+                            items: classes
+                                ?.map((cls) => DropdownMenuItem(
+                              value: cls,
+                              child: Text(
+                                "${cls.className} ${cls.sectionName}",
+                              ),
+                            ))
+                                .toList() ??
+                                [],
+                            onChanged: (value) {
+                              selectedClass.value = value;
+                            },
                           ),
-                          hint: const Text("Select Class"),
-                          items: classes
-                              ?.map((cls) => DropdownMenuItem(
-                            value: cls,
-                            child: Text(
-                              "${cls.className} ${cls.sectionName}",
-                            ),
-                          ))
-                              .toList() ??
-                              [],
-                          onChanged: (value) {
-                            selectedClass.value = value;
-                          },
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  SizedBox(width: 15.w),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "*Select Date",
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 5.h),
-                        TextFormField(
-                          controller: dateController,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                            hintText: "Select Date",
-                            prefixIcon: const Icon(Icons.calendar_today),
-                            filled: true,
-                            fillColor: Colors.white,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10.r),
+                    SizedBox(width: 15.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // const Text(
+                          //   "*Select Date",
+                          //   style: TextStyle(
+                          //     fontSize: 16,
+                          //     fontWeight: FontWeight.bold,
+                          //     color: Colors.white,
+                          //   ),
+                          // ),
+                          // SizedBox(height: 5.h),
+                          TextFormField(
+                            controller: dateController,
+                            readOnly: true,
+                            decoration: InputDecoration(
+                              hintText: "Select Date",
+                              prefixIcon: const Icon(Icons.calendar_today),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.r),
+                              ),
                             ),
+                            onTap: selectDate,
                           ),
-                          onTap: selectDate,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              SizedBox(height: 15.h),
+              SizedBox(height: 5.h),
               (selectedClass.value != null && selectedDate.value != null)
                   ? Expanded(
                 child: Column(
@@ -188,7 +198,7 @@ class StudentList extends HookConsumerWidget {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true), // Confirm
-              child: const Text("Yes"),
+              child: const Text("Yes",style: TextStyle(color: Colors.red),),
             ),
           ],
         ),
@@ -215,7 +225,7 @@ class StudentList extends HookConsumerWidget {
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true), // Confirm
-              child: const Text("Yes"),
+              child: const Text("Yes",style: TextStyle(color: Colors.green),),
             ),
           ],
         ),
@@ -237,7 +247,12 @@ class StudentList extends HookConsumerWidget {
         }
 
         final sortedStudents = List<Students>.from(d.students)
-          ..sort((a, b) => (a.studentId).compareTo(b.studentId));
+          ..sort((a, b) {
+            final rollA = int.tryParse(a.rollNo ?? '0') ?? 0;
+            final rollB = int.tryParse(b.rollNo ?? '0') ?? 0;
+            return rollA.compareTo(rollB);
+          });
+
 
         return Column(
           children: [
@@ -264,53 +279,57 @@ class StudentList extends HookConsumerWidget {
             SizedBox(height: 8.h),
 
             /// Heading Row
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
-              color: const Color.fromARGB(255, 233, 219, 236),
-              child: Row(
-                children: const [
-                  Expanded(
-                    flex: 1,
-                    child: Center(
-                      child: Text(
-                        "Select",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Center(
-                      child: Text(
-                        "Roll No",
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Center(
-                      child: Text(
-                        "Name",
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+            Padding(
+              padding: const EdgeInsets.only(left: 10,right: 10),
+              child: Container(
+                padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+                color: const Color.fromARGB(255, 233, 219, 236),
+                child: Row(
+                  children: const [
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Text(
+                          "Select",
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Center(
-                      child: Text(
-                        "Absent",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    Expanded(
+                      flex: 1,
+                      child: Center(
+                        child: Text(
+                          "Roll No",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                    Expanded(
+                      flex: 2,
+                      child: Center(
+                        child: Text(
+                          "Name",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Center(
+                        child: Text(
+                          "     Absent",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
+            SizedBox(height: 5),
             /// Student List
             Expanded(
               child: Scrollbar(
@@ -329,50 +348,51 @@ class StudentList extends HookConsumerWidget {
 
             /// Buttons Row (Update on left, Delete on right if available)
             /// Buttons Row (Update on left, Delete on right if available)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color.fromARGB(255, 26, 134, 222),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8.r),
-                      ),
-                      padding: EdgeInsets.symmetric(
-                        vertical: 8.h, // smaller height
-                      ),
-                      minimumSize: Size(0, 40.h), // fix small height
-                    ),
-                    onPressed: onUpdate,
-                    child: const Text(
-                      "Update",
-                      style: TextStyle(color: Colors.white, fontSize: 14),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10.w),
-                if (sortedStudents.first.deleteBtn == '1')
+            Padding(
+              padding: const EdgeInsets.only(top: 1.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color.fromARGB(255, 220, 53, 69),
+                        backgroundColor: const Color.fromARGB(255, 26, 134, 222),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8.r),
                         ),
                         padding: EdgeInsets.symmetric(
                           vertical: 8.h, // smaller height
                         ),
-                        minimumSize: Size(0, 40.h), // fix small height
                       ),
-                      onPressed: onDelete,
+                      onPressed: onUpdate,
                       child: const Text(
-                        "Delete",
+                        "Update",
                         style: TextStyle(color: Colors.white, fontSize: 14),
                       ),
                     ),
                   ),
-              ],
+                  SizedBox(width: 10.w),
+                  if (sortedStudents.first.deleteBtn == '1')
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color.fromARGB(255, 220, 53, 69),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.r),
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            vertical: 8.h, // smaller height
+                          ),
+                        ),
+                        onPressed: onDelete,
+                        child: const Text(
+                          "Delete",
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         );
@@ -383,6 +403,7 @@ class StudentList extends HookConsumerWidget {
     );
   }
 }
+
 
 class StudentTile extends HookConsumerWidget {
   final StudentBody studentBody;
@@ -416,42 +437,45 @@ class StudentTile extends HookConsumerWidget {
       }
     }
 
-    return Card(
-      child: ListTile(
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Checkbox(
-              value: markAttendance.value,
-              onChanged: (v) => updateStudentSelection(v, false),
-            ),
-            CircleAvatar(
-              child: student.rollNo != null
-                  ? Text((student.rollNo).toString())
-                  : const SizedBox.shrink(),
-            ),
-          ],
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "${student.firstName} ${student.lastName}",
-              style: TextStyle(
-                color: attendanceStatus.value ? Colors.red : Colors.black,
+    return Padding(
+      padding: const EdgeInsets.only(left: 8,right: 8),
+      child: Card(
+        child: ListTile(
+          leading: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Checkbox(
+                value: markAttendance.value,
+                onChanged: (v) => updateStudentSelection(v, false),
               ),
-            ),
-            student.isActive == "N"
-                ? const Text(
-              "(Inactive)",
-              style: TextStyle(color: Colors.red),
-            )
-                : const SizedBox.shrink()
-          ],
-        ),
-        trailing: Checkbox(
-          value: attendanceStatus.value,
-          onChanged: (v) => updateStudentSelection(v, true),
+              CircleAvatar(
+                child: student.rollNo != null
+                    ? Text((student.rollNo).toString(),style: TextStyle(fontSize: 13))
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "${student.firstName} ${student.lastName}",
+                style: TextStyle(
+                  color: attendanceStatus.value ? Colors.red : Colors.black,fontSize: 13
+                ),
+              ),
+              student.isActive == "N"
+                  ? const Text(
+                "(Inactive)",
+                style: TextStyle(color: Colors.red),
+              )
+                  : const SizedBox.shrink()
+            ],
+          ),
+          trailing: Checkbox(
+            value: attendanceStatus.value,
+            onChanged: (v) => updateStudentSelection(v, true),
+          ),
         ),
       ),
     );

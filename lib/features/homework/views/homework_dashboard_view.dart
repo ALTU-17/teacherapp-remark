@@ -45,7 +45,11 @@ class HomeworkDashboardView extends HookConsumerWidget {
               children: [
                 SizedBox(height: 160.h),
                 Expanded(
-                  child: ListView.builder(
+                  child:homework.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (err, _) => Center(child: Text('Error: $err')),
+                    data: (homework) => homework.isNotEmpty
+                        ? ListView.builder(
                     padding:
                     EdgeInsets.symmetric(horizontal: 15.w, vertical: 5.h),
                     itemCount: data.length,
@@ -53,7 +57,10 @@ class HomeworkDashboardView extends HookConsumerWidget {
                       final homework = data[index];
                       return HomeworkNoteCard(homework: homework);
                     },
-                  ),
+                  ): Center(
+                      child: Text('Homework not found',
+                      style: TextStyle(fontSize: 16.sp))),
+                ),
                 ),
               ],
             ),

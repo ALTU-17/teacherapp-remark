@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:teacherapp/common/styles.dart';
 import 'package:teacherapp/features/auth/providers/providers.dart';
 import 'package:teacherapp/features/home/providers/academic_year_provider.dart';
+import 'package:teacherapp/features/home/views/teacher_id.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../config/config.dart';
@@ -60,12 +61,12 @@ class DashboardView extends ConsumerWidget {
       'label': 'Smart Chat',
       'page': SmartChatRoute().location
     },
-    // {
-    //   'icon': 'assets/file_word.png',
-    //   'label': 'Class Performance',
-    //   'isNew': true,
-    //   'page': SmartChatRoute().location
-    // },
+    {
+      'icon': 'assets/user_check.jpeg',
+      'label': 'Teacher ID card',
+      'isNew': true,
+      'page': IDRoute().location
+    },
     // {
     //   'icon': 'assets/file_word.png',
     //   'label': 'Question Papers',
@@ -584,8 +585,7 @@ class DashboardView extends ConsumerWidget {
                } else if (_isSameDay(examDate, tomorrow)) {
                  displayDate = 'Tomorrow';
                } else {
-                 displayDate = exam[
-                 'date']; // Use the original date format if not Today or Tomorrow
+                 displayDate = exam['date']; // Use the original date format if not Today or Tomorrow
                }
 
                // Wrap the card with InkWell to detect taps

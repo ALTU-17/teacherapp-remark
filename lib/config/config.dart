@@ -2,13 +2,53 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 
+import 'package:riverpod/riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class AppConfig {
+  final String? laravelBaseUrl;
+  final String? laravelToken;
+
+  AppConfig({
+    this.laravelBaseUrl,
+    this.laravelToken
+  });
+}
+
+class AppConfigNotifier extends StateNotifier<AppConfig> {
+  AppConfigNotifier() : super(AppConfig());
+
+  Future<void> setLaravelUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('laravel_base_url', url);
+    state = AppConfig(laravelBaseUrl: url);
+  }
+
+  Future<void> setLaravelToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
+    state = AppConfig(laravelToken: token);
+  }
+
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final url = prefs.getString('laravel_base_url');
+    final laravelToken = prefs.getString('token');
+    state = AppConfig(laravelBaseUrl: url,laravelToken: laravelToken);
+  }
+}
+
+final appConfigProvider =
+StateNotifierProvider<AppConfigNotifier, AppConfig>(
+      (ref) => AppConfigNotifier(),
+);
 
 
 class Config {
 
-  // static const String getUrlApi = "https://api.aceventura.in/demo/evolvuURL/get_url";
-
-  static const String getUrlApi = "https://api.aceventura.in/evolvuURL/get_url";
+  static const String getUrlApi = "https://api.aceventura.in/demo/evolvuURL/get_url";
+  //
+  // static const String getUrlApi = "https://api.aceventura.in/evolvuURL/get_url";
 
   static String? dynamicEndpoint;
 
