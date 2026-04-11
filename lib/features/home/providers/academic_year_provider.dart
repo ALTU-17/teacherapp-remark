@@ -8,7 +8,7 @@ import '../services/services.dart';
 
 part 'academic_year_provider.g.dart';
 
-@Riverpod(keepAlive: false)
+@Riverpod(keepAlive: true)
 class AcademicYear extends _$AcademicYear {
   @override
   Future<AcdState> build() async {
@@ -18,7 +18,10 @@ class AcademicYear extends _$AcademicYear {
     final ac = await AcademicYearService(api, authData.url)
         .getAllAcademicYears(authData.shortName);
 
-    return AcdState(academicYrs: ac);
+    return AcdState(
+      academicYrs: ac,
+      selectedYear: authData.academicYr, // ✅ current active year
+    );
   }
 
   void changeYear(String? year) async {

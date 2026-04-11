@@ -22,7 +22,7 @@ class ClassP extends _$ClassP {
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
     return _homeworkService.getClass(
       authData.regId,
-      acdYear,
+      authData.academicYr,
       authData.shortName,
     );
   }

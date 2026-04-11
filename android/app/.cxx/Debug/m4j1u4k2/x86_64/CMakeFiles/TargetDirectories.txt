@@ -1,2 +1,0 @@
-C:/Users/skalt/OneDrive/Desktop/flutter practice/Flutter TeacherApp/android/app/.cxx/Debug/m4j1u4k2/x86_64/CMakeFiles/edit_cache.dir
-C:/Users/skalt/OneDrive/Desktop/flutter practice/Flutter TeacherApp/android/app/.cxx/Debug/m4j1u4k2/x86_64/CMakeFiles/rebuild_cache.dir

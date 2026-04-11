@@ -63,7 +63,6 @@ class AuthService {
         data: {
           "user_id": userId,
           "password": password,
-          // ❌ short_name NOT required for this API
         },
       );
 
@@ -83,8 +82,6 @@ class AuthService {
 
     return null;
   }
-
-
 
 
   TeacherUser? getCachedUser() => userBox.get('teacherUserCache');
