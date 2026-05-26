@@ -9,6 +9,7 @@ import 'package:teacherapp/features/auth/providers/auth_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:teacherapp/views/home/remark/provider/remark_provider.dart';
 
+import '../../../common/textSanitizer.dart';
 import 'addRemark.dart';
 import 'editRemark.dart';
 import 'model/remark.dart';
@@ -95,7 +96,7 @@ class RemarkNoteCard extends HookConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final showActions = useState(false);
-
+    String cleanedNote = TextSanitizer.cleanText(remark.remarkDesc??'');
     return Card(
       margin: EdgeInsets.symmetric(vertical: 8.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
@@ -172,7 +173,7 @@ class RemarkNoteCard extends HookConsumerWidget {
             Padding(
               padding: EdgeInsets.symmetric(vertical: 1.h),
               child: Text(
-                "Remark: ${remark.remarkDesc}",
+                "Remark: ${cleanedNote}",
                 style: TextStyle(fontSize: 14.sp, color: Colors.black),
               ),
             ),

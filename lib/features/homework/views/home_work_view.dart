@@ -11,6 +11,7 @@ import 'package:teacherapp/config/utils.dart';
 import 'package:teacherapp/features/homework/providers/h_s_status_provider.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../../common/textSanitizer.dart';
 import '../models/models.dart';
 import '../providers/homework_provider.dart';
 import '../widgets/widgets.dart';
@@ -31,7 +32,7 @@ class HomeWorkView extends HookConsumerWidget {
     final selectedStatuses = useState<Map<String, String>>({});
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     final isDownloading = useState<bool>(false);
-
+    String cleanedDescription = TextSanitizer.cleanText(homework?.description??'');
     void onChecked(HomeworkStatus v) {
       final updatedList = [...updateList.value];
 
@@ -363,7 +364,7 @@ class HomeWorkView extends HookConsumerWidget {
                   ),
                   children: [
                     TextSpan(
-                      text: homework?.description ?? 'No Description',
+                      text: cleanedDescription,
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.normal,

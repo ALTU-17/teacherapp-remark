@@ -44,7 +44,6 @@ class _TeacherVerificationViewState
 
     getVersion(context);
 
-    // Whenever user types something, remove error messages
     usernameCtrl.addListener(() {
       if (usernameCtrl.text.isNotEmpty &&
           (shouldShowText || shouldShowText2)) {
@@ -224,10 +223,8 @@ class _TeacherVerificationViewState
     List<int> newParts = newVersion.split('.').map((e) => int.parse(e)).toList();
     List<int> currentParts = currentVersion.split('.').map((e) => int.parse(e)).toList();
 
-    // Compare each part of the version
     for (int i = 0; i < newParts.length; i++) {
       if (i >= currentParts.length) {
-        // If current version has fewer parts, new version is greater
         return true;
       }
       if (newParts[i] > currentParts[i]) {
@@ -237,7 +234,6 @@ class _TeacherVerificationViewState
       }
     }
 
-    // If all parts are equal, new version is not greater
     return false;
   }
 

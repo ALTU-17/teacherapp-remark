@@ -14,6 +14,7 @@ import 'package:teacherapp/features/home/providers/academic_year_provider.dart';
 import 'package:teacherapp/features/teacher_note/providers/providers.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../common/textSanitizer.dart';
 import '../models/note.dart';
 
 class ViewTeacherNoteView extends HookConsumerWidget {
@@ -272,7 +273,8 @@ class ViewTeacherNoteView extends HookConsumerWidget {
                           ? DateFormat('dd-MM-yyyy').format(note.publishDate!)
                           : ""
                     },
-                    {"Description:": note.description ?? ""},
+                    // {"Description:": note.description ?? ""},
+                    {"Description:": TextSanitizer.cleanText(note.description ?? "")},
                   ]),
                   FutureBuilder<List<String>>(
                     future: teacherP.getDocument(note),

@@ -407,16 +407,28 @@ class TeacherNoteService {
       final response = await apiClient.post(
         '${baseUrl}AdminApi/daily_notes',
         data: FormData.fromMap(b.toJson()),
+        options: Options(responseType: ResponseType.plain), // 👈 get raw string
       );
+
       if (response.statusCode == 200) {
-        final jsonResponse = response.data;
+        String rawData = response.data.toString();
+
+        // 👇 Strip any PHP HTML errors/warnings before the JSON
+        final jsonStart = rawData.lastIndexOf('{');
+        final jsonEnd = rawData.lastIndexOf('}');
+
+        if (jsonStart == -1 || jsonEnd == -1) return false;
+
+        final cleanJson = rawData.substring(jsonStart, jsonEnd + 1);
+        final jsonResponse = jsonDecode(cleanJson);
+
         if (jsonResponse['status'] == true) {
           return true;
         } else {
           return false;
         }
       } else {
-        throw Exception('Failed to load leave applications');
+        throw Exception('Failed to load');
       }
     } catch (e) {
       throw Exception('Error: $e');

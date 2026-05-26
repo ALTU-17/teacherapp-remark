@@ -23,6 +23,8 @@ import 'package:teacherapp/features/homework/providers/homework_provider.dart';
 import 'package:teacherapp/features/homework/providers/subjects_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../common/textSanitizer.dart';
+
 class EditAddHomeWorkView extends HookConsumerWidget {
   final Homework? h;
   const EditAddHomeWorkView(this.h, {super.key});
@@ -813,7 +815,7 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                   FormBuilderTextField(
                     name: 'description',
                     maxLines: 3,
-                    initialValue: h?.description,
+                    initialValue: TextSanitizer.cleanText(h?.description ?? ''),
                     validator: FormBuilderValidators.required(
                         errorText: 'Description is mandatory'),
                     decoration: InputDecoration(

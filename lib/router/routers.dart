@@ -11,7 +11,14 @@ import 'package:teacherapp/views/home/remark/remarkDashBoard.dart';
 import 'package:teacherapp/views/home/timeTable/timeTableTecaher.dart';
 import '../features/SmartChatWebView.dart';
 import '../features/auth/views/views.dart';
-import '../features/home/views/notice_board.dart';
+import '../features/gotoLMSweb.dart';
+import '../features/home/notice_board_screens/library_pending.dart';
+import '../features/home/notice_board_screens/notice_board.dart';
+import '../features/home/notice_board_screens/pending_fees.dart';
+import '../features/home/notice_board_screens/pending_lesson_plans.dart';
+import '../features/home/notice_board_screens/today_homework.dart';
+import '../features/home/notice_board_screens/upcoming_birthdays.dart';
+import '../views/home/timeTable/exam_timetable.dart';
 import '../features/home/views/teacher_id.dart';
 import '../features/home/views/views.dart';
 import '../features/homework/models/models.dart';
@@ -170,7 +177,21 @@ class SmartChatRoute extends GoRouteData with _$SmartChatRoute {
   static const path = 'smart_chat';
   @override
   Widget build(BuildContext context, GoRouterState state) {
-    return const SmartChatPage();
+    final extra = state.extra as Map<String, dynamic>?;
+    return SmartChatPage(
+      customUrl: extra?['url'],
+    );
+  }
+}
+class LMSWebViewRoute extends GoRouteData with _$LMSWebViewRoute {
+  const LMSWebViewRoute();
+  static const path = 'lms';
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+    final extra = state.extra as Map<String, dynamic>?;
+    return LMSWebViewScreen(
+      past_que_papers_url: extra?['url'],
+    );
   }
 }
 
@@ -183,6 +204,17 @@ class IDRoute extends GoRouteData with _$IDRoute {
   Widget build(BuildContext context, GoRouterState state) {
 
     return StaffIdCardPage();
+  }
+}
+class ExamRoute extends GoRouteData with _$ExamRoute {
+  const ExamRoute();
+
+  static const path = 'exam';
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+
+    return TeacherExamScreen();
   }
 }
 
@@ -319,6 +351,49 @@ class NoticeBoardScreenRoute extends GoRouteData with _$NoticeBoardScreenRoute {
   Widget build(BuildContext context, GoRouterState state) =>
       const NoticeBoardScreen();
 }
+
+@TypedGoRoute<BirthdayRoute>(path: '/birthdays')
+class BirthdayRoute extends GoRouteData with _$BirthdayRoute {
+  const BirthdayRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const BirthdayScreen();
+}
+@TypedGoRoute<TodayHomeworkRoute>(path: '/todayHW')
+class TodayHomeworkRoute extends GoRouteData with _$TodayHomeworkRoute {
+  const TodayHomeworkRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const TodayHomeworkScreen();
+}
+@TypedGoRoute<PendFeeRoute>(path: '/PendFee')
+class PendFeeRoute extends GoRouteData with _$PendFeeRoute {
+  const PendFeeRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const PendingFeesScreen();
+}
+@TypedGoRoute<WLPlanRoute>(path: '/WLPlan')
+class WLPlanRoute extends GoRouteData with _$WLPlanRoute {
+  const WLPlanRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const WeeklyLessonPlansScreen();
+}
+@TypedGoRoute<LibRoute>(path: '/LIB')
+class LibRoute extends GoRouteData with _$LibRoute {
+  const LibRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const LibraryPendingScreen();
+}
+
+
 
 ////////////////////////////////////// AUTH ////////////////////////////////////
 

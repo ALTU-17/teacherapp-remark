@@ -9,6 +9,7 @@ import 'package:teacherapp/config/utils.dart';
 import 'package:teacherapp/features/teacher_note/providers/providers.dart';
 import 'package:teacherapp/router/routers.dart';
 
+import '../../../common/textSanitizer.dart';
 import '../models/note.dart';
 import '../views/EditNote.dart';
 
@@ -22,7 +23,7 @@ class NoteCard extends HookConsumerWidget {
     final showEditActions = useState(false);
     final noteP = ref.read(teacherNoteProvider.notifier);
     final isPublishing = useState(false);
-
+    String cleanedNote = TextSanitizer.cleanText(note.description??'');
     onDelete() async {
       if (await noteP.deleteNote(note)) {
         Utils.toast("Deleted !");
@@ -98,6 +99,7 @@ class NoteCard extends HookConsumerWidget {
 
     return Stack(
       children: [
+
         Card(
           margin: EdgeInsets.symmetric(vertical: 8.h),
           shape: RoundedRectangleBorder(
@@ -148,7 +150,7 @@ class NoteCard extends HookConsumerWidget {
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
-                          "Description: ${note.description}",
+                          "Description: ${cleanedNote}",
                           style: TextStyle(fontSize: 14.sp, color: Colors.black),
                         ),
                       ),

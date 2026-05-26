@@ -15,6 +15,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../common/textSanitizer.dart';
+
 class ViewRemark extends ConsumerStatefulWidget {
   final Remark remark;
   const ViewRemark({super.key, required this.remark});
@@ -43,6 +45,7 @@ class _ViewRemarkState extends ConsumerState<ViewRemark> {
     selectedStudents = [
       "${widget.remark.firstName ?? ''} ${widget.remark.midName ?? ''} ${widget.remark.lastName ?? ''}"
     ];
+    String cleanedDescription = TextSanitizer.cleanText(widget.remark.remarkDesc??'');
     _initializeNotifications();
     fetchAttachments();
   }
@@ -359,6 +362,7 @@ class _ViewRemarkState extends ConsumerState<ViewRemark> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+
                   const Text("*Class", style: TextStyle(fontWeight: FontWeight.bold)),
                   _readonlyTile(selectedClass),
                   SizedBox(height: 10.h),
@@ -376,7 +380,7 @@ class _ViewRemarkState extends ConsumerState<ViewRemark> {
                   SizedBox(height: 10.h),
 
                   const Text("*Remark", style: TextStyle(fontWeight: FontWeight.bold)),
-                  _readonlyTile(widget.remark.remarkDesc ?? ''),
+                  _readonlyTile(TextSanitizer.cleanText(widget.remark.remarkDesc??'')),
                   SizedBox(height: 10.h),
 
                   // Attach Document header row

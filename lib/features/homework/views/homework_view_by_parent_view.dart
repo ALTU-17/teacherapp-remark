@@ -4,6 +4,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:teacherapp/features/homework/models/models.dart';
 import 'package:teacherapp/features/homework/providers/homework_view_provider.dart';
 
+import '../../../common/textSanitizer.dart';
+
 class HomeworkViewByParentView extends HookConsumerWidget {
   final Homework? homework;
   const HomeworkViewByParentView(this.homework, {super.key});
@@ -12,6 +14,7 @@ class HomeworkViewByParentView extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // Watch homeworkViewProvider for loading/error states
     final homeview = ref.watch(homeworkViewProvider(homework));
+    String decs = TextSanitizer.cleanText(homework?.description ?? '');
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -54,7 +57,8 @@ class HomeworkViewByParentView extends HookConsumerWidget {
                   ),
                   children: [
                     TextSpan(
-                      text: homework?.description ?? 'No Description',
+                      text: decs ?? 'No Description',
+                      // text: TextSanitizer.cleanText(homework?.description ?? ''),
                       style: TextStyle(
                         fontSize: 14.sp,
                         fontWeight: FontWeight.normal,
