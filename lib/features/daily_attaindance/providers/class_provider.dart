@@ -22,7 +22,8 @@ class ClassP extends _$ClassP {
 
     _classsService = ClasssService(api, authData.url);
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
-    return await _classsService.getClasses(acdYear);
+    final auth = ref.read(authProvider).requireValue;
+    return await _classsService.getClasses(auth.academicYr ?? '');
   }
 
   Future getStudents() async {}

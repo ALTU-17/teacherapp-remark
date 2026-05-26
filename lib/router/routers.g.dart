@@ -113,10 +113,16 @@ RouteBase get $homeShellRoute => ShellRouteData.$route(
             GoRouteData.$route(
               path: 'smart_chat',
               factory: _$SmartChatRoute._fromState,
+            ),GoRouteData.$route(
+              path: 'lms',
+              factory: _$LMSWebViewRoute._fromState,
             ),
             GoRouteData.$route(
               path: 'id',
               factory: _$IDRoute._fromState,
+            ), GoRouteData.$route(
+              path: 'exam',
+              factory: _$ExamRoute._fromState,
             ),
           ],
         ),
@@ -149,6 +155,31 @@ RouteBase get $homeShellRoute => ShellRouteData.$route(
           path: '/notice',
           name: 'notice',
           factory: _$NoticeBoardScreenRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: '/birthdays',
+          name: 'birthdays',
+          factory: _$BirthdayRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: '/todayHW',
+          name: 'todayHW',
+          factory: _$TodayHomeworkRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: '/PendFee',
+          name: 'PendFee',
+          factory: _$PendFeeRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: '/WLPlan',
+          name: 'WLPlan',
+          factory: _$WLPlanRoute._fromState,
+        ),
+        GoRouteData.$route(
+          path: '/LIB',
+          name: 'LIB',
+          factory: _$LibRoute._fromState,
         ),
       ],
     );
@@ -522,6 +553,28 @@ mixin _$SmartChatRoute on GoRouteData {
   @override
   void replace(BuildContext context) => context.replace(location);
 }
+mixin _$LMSWebViewRoute on GoRouteData {
+  static LMSWebViewRoute _fromState(GoRouterState state) =>
+      const LMSWebViewRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/dashbaord/lms',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
 
 mixin _$IDRoute on GoRouteData {
   static IDRoute _fromState(GoRouterState state) =>
@@ -530,6 +583,28 @@ mixin _$IDRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/dashbaord/id',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$ExamRoute on GoRouteData {
+  static ExamRoute _fromState(GoRouterState state) =>
+      const ExamRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/dashbaord/exam',
       );
 
   @override
@@ -668,6 +743,117 @@ mixin _$NoticeBoardScreenRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/notice',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+
+mixin _$BirthdayRoute on GoRouteData {
+  static BirthdayRoute _fromState(GoRouterState state) =>
+      BirthdayRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/birthdays',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$TodayHomeworkRoute on GoRouteData {
+  static TodayHomeworkRoute _fromState(GoRouterState state) =>
+      TodayHomeworkRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/todayHW',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$PendFeeRoute on GoRouteData {
+  static PendFeeRoute _fromState(GoRouterState state) =>
+      PendFeeRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/PendFee',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$WLPlanRoute on GoRouteData {
+  static WLPlanRoute _fromState(GoRouterState state) =>
+      WLPlanRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/WLPlan',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$LibRoute on GoRouteData {
+  static LibRoute _fromState(GoRouterState state) =>
+      LibRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/LIB',
       );
 
   @override

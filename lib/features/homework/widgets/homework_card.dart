@@ -306,7 +306,7 @@ class HomeworkNoteCard extends HookConsumerWidget {
                                   maxRadius: 13.r,
                                   backgroundColor: const Color.fromARGB(255, 232, 84, 74),
                                   child: Text(
-                                    "${homework.commentCount}",
+                                    "${displayCommentCount}",
                                     style: TextStyle(
                                       fontSize: 10.sp,
                                       color: Colors.white,

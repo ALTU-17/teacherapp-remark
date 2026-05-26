@@ -50,6 +50,7 @@ class AuthService {
 
     debugPrint('Laravel login URL: $url');
     debugPrint('Laravel login body: user_id=$userId');
+    debugPrint('Laravel login body: user_id=$password');
 
     try {
       final response = await apiClient.post(
@@ -62,8 +63,8 @@ class AuthService {
         ),
         data: {
           "user_id": userId,
+          "short_name": shortName,
           "password": password,
-          // ❌ short_name NOT required for this API
         },
       );
 
@@ -83,8 +84,6 @@ class AuthService {
 
     return null;
   }
-
-
 
 
   TeacherUser? getCachedUser() => userBox.get('teacherUserCache');

@@ -120,9 +120,21 @@ class HomeworkService {
       final response = await apiClient.post(
         '${baseUrl}AdminApi/homework',
         data: FormData.fromMap(b.toJson()),
+        options: Options(responseType: ResponseType.plain), // 👈 get raw string
       );
+
       if (response.statusCode == 200) {
-        final jsonResponse = response.data;
+        final rawData = response.data.toString();
+
+        // Strip any PHP HTML errors/warnings before the JSON
+        final jsonStart = rawData.lastIndexOf('{');
+        final jsonEnd = rawData.lastIndexOf('}');
+
+        if (jsonStart == -1 || jsonEnd == -1) return false;
+
+        final cleanJson = rawData.substring(jsonStart, jsonEnd + 1);
+        final jsonResponse = jsonDecode(cleanJson);
+
         return jsonResponse['status'] == true;
       } else {
         throw Exception('Failed to publish homework');
