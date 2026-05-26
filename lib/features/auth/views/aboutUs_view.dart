@@ -53,49 +53,49 @@ class AboutUsScreen extends HookConsumerWidget {
                         ),
                         SizedBox(height: 12),
                         Text(
-                          'Allows teachers to powerfully manage their school work from within their mobile devices thereby giving them more freedom for other tasks.',
+                          'EvolvU enables educators to manage school-related tasks seamlessly from their mobile devices, enhancing flexibility and productivity.',
                           style: TextStyle(fontSize: 15),
                           textAlign: TextAlign.center,
                         ),
                         SizedBox(height: 5),
                         Text(
-                          'We thank you, Teachers, for your support and helping us develop a better app.',
+                          'We extend our gratitude to the teachers, parents, and school management whose insights have shaped the app’s evolution. Backed by a skilled team of designers, developers, architects. EvolvU continues to grow through collaborative innovation.',
                           style: TextStyle(fontSize: 15),
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 10),
-                        Text(
-                          'EvolvU is backed by a marvelous team of expert designers, developers, architects and quality.',
-                          style: TextStyle(fontSize: 15),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'We thank you, Parents and school management for your inputs and support.',
-                          style: TextStyle(fontSize: 15),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 15),
-                        Text(
-                          'Send your new feature request on',
-                          style: TextStyle(fontSize: 14),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'contact@aceventura.in',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // SizedBox(height: 10),
+                        // Text(
+                        //   'EvolvU is backed by a marvelous team of expert designers, developers, architects and quality.',
+                        //   style: TextStyle(fontSize: 15),
+                        //   textAlign: TextAlign.center,
+                        // ),
+                        // SizedBox(height: 10),
+                        // Text(
+                        //   'We thank you, Parents and school management for your inputs and support.',
+                        //   style: TextStyle(fontSize: 15),
+                        //   textAlign: TextAlign.center,
+                        // ),
+                        // SizedBox(height: 15),
+                        // Text(
+                        //   'Send your new feature request on',
+                        //   style: TextStyle(fontSize: 14),
+                        //   textAlign: TextAlign.center,
+                        // ),
+                        // SizedBox(height: 4),
+                        // Text(
+                        //   'contact@aceventura.in',
+                        //   style: TextStyle(
+                        //     fontSize: 15,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
                         SizedBox(height: 6),
                         Text(
                           'Email: aceventuraservices@gmail.com',
                           style: TextStyle(fontSize: 15),
                           textAlign: TextAlign.center,
                         ),
-                        SizedBox(height: 12),
+                        SizedBox(height: 5),
                         Text(
                           'Rate Us:',
                           style: TextStyle(fontSize: 14),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -8,6 +10,7 @@ import 'package:teacherapp/features/homework/providers/providers.dart';
 import 'package:teacherapp/router/routers.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../../home/views/textSanitizer.dart';
 import '../models/models.dart';
 import 'package:intl/intl.dart';
 
@@ -24,6 +27,9 @@ class HomeworkNoteCard extends HookConsumerWidget {
     final commentCount = useState<int?>(null);
     final isLoadingCommentCount = useState(false);
     final isPublishing = useState(false); // ← Add this loading state
+
+    String rawDescription = homework.description ?? '';
+    String cleanedDescription = TextSanitizer.cleanText(rawDescription);
 
     Future<void> _fetchCommentCount() async {
       if (homework.homeworkId == null) return;
@@ -175,7 +181,7 @@ class HomeworkNoteCard extends HookConsumerWidget {
                       SizedBox(width: 8.w),
                       Expanded(
                         child: Text(
-                          "Description: ${homework.description}",
+                          "Description: $cleanedDescription",
                           style: TextStyle(fontSize: 14.sp, color: Colors.black),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -306,7 +312,7 @@ class HomeworkNoteCard extends HookConsumerWidget {
                                   maxRadius: 13.r,
                                   backgroundColor: const Color.fromARGB(255, 232, 84, 74),
                                   child: Text(
-                                    "${homework.commentCount}",
+                                    "${displayCommentCount}",
                                     style: TextStyle(
                                       fontSize: 10.sp,
                                       color: Colors.white,

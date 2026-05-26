@@ -214,4 +214,11 @@ class LoginView extends HookConsumerWidget {
       ),
     );
   }
+  String reverseString(String text) {
+    return text.split('').reversed.join();
+  }
+  // Check Palindrome
+  bool isPalindrome(String text) {
+    return text == text.split('').reversed.join();
+  }
 }

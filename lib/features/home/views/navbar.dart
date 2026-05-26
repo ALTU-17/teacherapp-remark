@@ -6,7 +6,7 @@ import 'package:teacherapp/router/routers.dart';
 import '../../auth/providers/providers.dart';
 import '../../auth/widgets/drawer_dialog.dart';
 import '../providers/academic_year_provider.dart';
-import 'notice_board.dart';
+import '../notice_board_screens/notice_board.dart';
 
 class ScaffoldWithCustomNavBar extends HookConsumerWidget {
   final Widget child;
@@ -33,7 +33,7 @@ class ScaffoldWithCustomNavBar extends HookConsumerWidget {
             ),
             children: [
               TextSpan(
-                text: "${auth.value?.teacherVerification?.shortName ?? ""} Smart Teacher App ${acdYear.selectedYear}",
+                text: "${auth.value?.teacherVerification?.shortName ?? ""} Smart Teacher App ${academicYr}",
               ),
             ],
           ),
@@ -84,13 +84,13 @@ class ScaffoldWithCustomNavBar extends HookConsumerWidget {
                 context: context
             ),
 
-            // _buildNavItem(
-            //     icon: Icons.developer_board_outlined,
-            //     label: 'Notice Board',
-            //     index: 3,
-            //     currentIndex: currentIndex,
-            //     context: context
-            // ),
+            _buildNavItem(
+                icon: Icons.developer_board_outlined,
+                label: 'Notice Board',
+                index: 3,
+                currentIndex: currentIndex,
+                context: context
+            ),
 
           ],
         ),
@@ -110,7 +110,7 @@ class ScaffoldWithCustomNavBar extends HookConsumerWidget {
     return GestureDetector(
       onTap: () {
 
-          _navigateToPage(index, context);
+        _navigateToPage(index, context);
 
       },
       child: Column(
@@ -173,7 +173,7 @@ class ScaffoldWithCustomNavBar extends HookConsumerWidget {
       case 2:
         context.go(TeacherProfileRoute().location);
         break;
-        case 3:
+      case 3:
         context.go(NoticeBoardScreenRoute().location);
         break;
     // Add more cases as needed for other pages

@@ -42,7 +42,9 @@ flutter_native_splash:
 #  Class subsitution.
 
 
-version: 1.0.0+2
+version: 1.1.0+3
+
+#config.dart
 
 environment:
   sdk: ^3.6.2
@@ -84,17 +86,23 @@ dependencies:
   intl: 0.20.2
   form_builder_validators: ^11.1.2
   json_annotation: ^4.9.0
-  lottie: ^3.3.1
+  lottie: ^3.3.0
   open_filex: ^4.7.0
-  webview_flutter: ^4.13.0
+  webview_flutter: ^4.9.0
 
-  path_provider: any
+  path_provider: ^2.1.3
   share_plus: ^7.2.1
   tuple: ^2.0.2
   permission_handler: ^12.0.1
   flutter_local_notifications: ^19.4.1
   url_launcher: ^6.3.2
   shared_preferences: ^2.5.4
+  excel: ^2.1.0
+  webview_flutter_android: ^4.10.1
+  webview_flutter_wkwebview: ^3.9.1
+  file_picker: ^10.3.10
+
+  flutter_html: ^3.0.0
 
 dev_dependencies:
 
@@ -120,6 +128,7 @@ dev_dependencies:
   riverpod_generator: ^2.6.5
   riverpod_lint: ^2.6.5
   custom_lint: ^0.7.5
+
 
 
 # For information on the generic Dart part of this file, see the
@@ -167,3 +176,118 @@ flutter:
     - assets/
     - assets/share.png
     - assets/user_check.jpeg
+
+
+#  Future<void> getVersion(BuildContext _context) async {
+#  print('latest_version11 => ${BaseURl + '/flutter_teacher_apk_latest_version'}');
+#
+#  final url = Uri.parse(BaseURl + '/flutter_teacher_apk_latest_version');
+#
+#  try {
+#final response = await http.post(url,body: {
+#  'type':'ios'
+#},);
+#  print('latest_version => ${response.statusCode}');
+#
+#  if (response.statusCode == 200) {
+#  final jsonData = jsonDecode(response.body);
+#  print('latest_version => ${response.body}');
+#
+#  if (jsonData is List && jsonData.isNotEmpty) {
+#  final packageInfo = await PackageInfo.fromPlatform();
+#  packageInfoVar = packageInfo.version;
+#
+#  print('Current_version packageInfoVar=> ${packageInfoVar}');
+#
+#  lattest_androidVersion = jsonData[0]['latest_version'] as String;
+#  final releaseNotes = jsonData[0]['release_notes'] as String;
+#  final forcedUpdate = jsonData[0]['forced_update'] as String;
+#
+#  if (lattest_androidVersion != null) {
+#  print('Current_version => 22222 ${packageInfo.version}');
+#  print('lattest_androidVersion => 22222 ${lattest_androidVersion}');
+#
+#  // lattest_androidVersion = '1.0.1';
+#  // Compare versions
+#  if (_isVersionGreater(lattest_androidVersion, packageInfoVar)) {
+#  print('Current_version => 3333 ${packageInfo.version}');
+#
+#  if (forcedUpdate == 'N') {
+#  print('Current_version => NNNNN ${packageInfo.version}');
+#
+#  showDialog(
+#context: _context,
+#builder: (BuildContext context) {
+#  return AlertDialog(
+#  title: Text('V ${lattest_androidVersion}'),
+#  content: Text(releaseNotes),
+#  actions: [
+#    TextButton(
+#    onPressed: () {
+#                    launchUrl(Uri.parse(
+#                    'https://apps.apple.com/app/id6745809660'));
+#    },
+#    child: Text(
+#             'Update',
+#    style: TextStyle(
+#      color: Colors.green, fontWeight: FontWeight.bold),
+#    ),
+#    ),
+#    TextButton(
+#    onPressed: () {
+#                    Navigator.of(context).pop();
+#    },
+#    child: Text('Cancel'),
+#    ),
+#  ],
+#  );
+#},
+#  );
+#} else if (forcedUpdate == 'Y') {
+#  print('Current_version => 44444 ${packageInfo.version}');
+#
+#  showDialog(
+#context: _context,
+#barrierDismissible: false, // Prevent dismissing the dialog
+#builder: (BuildContext context) {
+#  return WillPopScope(
+#  onWillPop: () async => false, // Disable back button
+#  child: AlertDialog(
+#    title: Text('V ${lattest_androidVersion}'),
+#    content: Text(releaseNotes),
+#    actions: [
+#      TextButton(
+#      onPressed: () {
+#                      launchUrl(Uri.parse(
+#                      'https://apps.apple.com/app/id6745809660'));
+#      },
+#      child: Text(
+#               'Update',
+#      style: TextStyle(
+#        color: Colors.green,
+#      fontWeight: FontWeight.bold),
+#      ),
+#      ),
+#    ],
+#  ),
+#  );
+#},
+#  );
+#}}}
+#} else {
+#  print("Unexpected JSON format");
+#}
+#} else {
+#print('Error Response: ${response.statusCode}');
+#}
+#} catch (e) {
+#print('Error: $e');
+#}
+#}
+
+
+
+
+
+
+

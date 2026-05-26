@@ -1,69 +1,18 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:teacherapp/features/auth/providers/auth_provider.dart';
 
-class StaffApiService {
-  final String baseUrl;
-  StaffApiService(this.baseUrl);
+import '../Notice Board APIS/StaffApiService.dart';
 
-  Future<Teacher> getTeacher({
-    required String regId,
-    required String token,
-  }) async {
-    final baseUrl = await getLaravelBaseUrl();
-    final token = await getLaravelToken();
 
-    print('token: ${token}');
-    print('baseUrl: ${'${baseUrl}teachersdata/$regId'}');
 
-    final res = await http.get(
-      Uri.parse('${baseUrl}teachersdata/$regId'),
-      headers: {
-        'Authorization': 'Bearer $token'},
-    );
-    print('Response body: ${regId}');
-    print('Response body: ${res.body}');
 
-    if (res.statusCode != 200) {
-      throw Exception('Failed to load teacher');
-    }
 
-    final json = jsonDecode(res.body);
-    return Teacher.fromJson(json['teacher']);
-  }
 
-  Future<void> updateTeacher({
-    required String regId,
-    required String token,
-    required Map<String, dynamic> body,
-  }) async {
-    final baseUrl = await getLaravelBaseUrl();
-    final token = await getLaravelToken();
-    print('baseUrl: ${'${baseUrl}update_teacherdetails/$regId'}');
-    print('baseUrl: ${'${baseUrl}update_teacherdetails/$token'}');
-
-    final res = await http.put(
-      Uri.parse('${baseUrl}update_teacherdetails/$regId'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode(body),
-    );
-    print('update_teacherdetails: $res');
-
-    if (res.statusCode != 200) {
-      throw Exception('Update failed');
-    }
-  }
-}
 
 final staffApiProvider = Provider<StaffApiService>((ref) {
   final auth = ref.read(authProvider).requireValue;
@@ -93,6 +42,8 @@ final teacherProvider = FutureProvider<Teacher>((ref) async {
   final service = ref.watch(staffApiProvider);
 
   final regId = auth.regId ?? '';
+  final classId = auth.teacherDetails!.classId ?? '';
+  final sectionId = auth.teacherDetails!.sectionId ?? '';
   if (regId.isEmpty) throw Exception('RegId missing');
 
   return service.getTeacher(

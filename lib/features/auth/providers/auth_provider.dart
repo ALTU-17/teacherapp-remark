@@ -99,6 +99,10 @@ class Auth extends _$Auth {
     // 🔥 CLEAR AUTH STATE
     state = const AsyncData(TeacherUser());
 
+    // 🔥 CLEAR ALL SHARED PREFERENCES
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();  // This removes ALL stored data
+
     // 🔥 FORCE RESET ALL DEPENDENT PROVIDERS
     ref.invalidate(teacherProvider);
     ref.invalidate(staffApiProvider);

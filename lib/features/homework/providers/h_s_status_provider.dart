@@ -22,7 +22,7 @@ class HSStatus extends _$HSStatus {
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
     final b = HSStatusBody(
       homeworkId: homework.homeworkId,
-      academicYr: acdYear,
+      academicYr: authData.academicYr,
       shortName: authData.shortName,
       teacherId: authData.regId,
     );
