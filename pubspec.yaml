@@ -25,7 +25,9 @@ flutter_native_splash:
 # Lesson plan Pending Approval
 # Teacher note end date alert
 # Leave Approval Notifications
-# Homework check reminder
+# Homework check reminder   launchUrl(Uri.parse(
+#                              'https://apps.apple.com/in/app/evolvu-smart-teacher-app/id6745809660'));
+#                          },
 
 #  Create & lesson plan reminder > if teacher not sent lp plan for approval.
 #  self reminder > Teacher note end date + Lib book due date reminder + lesson plan reminder + Pending fee reminder (class teacher)
@@ -42,7 +44,7 @@ flutter_native_splash:
 #  Class subsitution.
 
 
-version: 1.1.0+3
+version: 1.1.3+5
 
 #config.dart
 
@@ -176,6 +178,7 @@ flutter:
     - assets/
     - assets/share.png
     - assets/user_check.jpeg
+    - assets/newlogo.png
 
 
 #  Future<void> getVersion(BuildContext _context) async {

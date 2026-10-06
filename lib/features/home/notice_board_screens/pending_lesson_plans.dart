@@ -7,12 +7,14 @@ import '../views/teacher_id.dart';
 
 class WeeklyLessonPending {
   final String pendingClasses;
+  final String week;
   final int teacherId;
   final String name;
   final String phone;
 
   WeeklyLessonPending({
     required this.pendingClasses,
+    required this.week,
     required this.teacherId,
     required this.name,
     required this.phone,
@@ -36,11 +38,21 @@ class WeeklyLessonPending {
       pendingClasses = rawPending.toString();
     }
 
+    // FIX 7: Properly extract week from the JSON
+    String week = "";
+    final rawWeek = json["week"];
+    if (rawWeek != null &&
+        rawWeek.toString().toLowerCase() != "null" &&
+        rawWeek.toString().trim().isNotEmpty) {
+      week = rawWeek.toString();
+    }
+
     return WeeklyLessonPending(
       pendingClasses: pendingClasses,
       teacherId: teacherId,
       name: json["name"]?.toString() ?? "Unknown",
       phone: json["phone"]?.toString() ?? "",
+      week: week,
     );
   }
 
@@ -70,18 +82,65 @@ class WeeklyLessonPending {
         .toList();
   }
 
-  // FIX 4: Helper to quickly check if teacher actually has pending plans
+  // FIX 4: Helper to quickly check if teacher actually has upcoming plans
   bool get hasPendingClasses => classList.isNotEmpty;
 }
 
-final weeklyLessonPendingProvider =
-FutureProvider<List<WeeklyLessonPending>>((ref) async {
-  final api = ref.watch(staffApiProvider);
-  final list = await api.getWeeklyLessonPending();
+// FIX 8: Create a wrapper class to hold both the list and the week
+class WeeklyLessonPendingResponse {
+  final List<WeeklyLessonPending> list;
+  final String week;
+  final List<String> createdList;
 
-  // FIX 5: Filter out teachers with no actual pending classes
-  // so teachers with all LP submitted don't appear in the list
-  return list.where((t) => t.hasPendingClasses).toList();
+  WeeklyLessonPendingResponse({
+    required this.list,
+    required this.week,
+    this.createdList = const [],
+  });
+
+  factory WeeklyLessonPendingResponse.fromJson(Map<String, dynamic> json) {
+    // Extract the list of upcoming classes
+    final list = (json["list"] as List?)
+        ?.map((item) => WeeklyLessonPending.fromJson(item as Map<String, dynamic>))
+        .toList() ?? [];
+
+    // Extract week from root level
+    final week = json["week"]?.toString() ?? "";
+
+    // Extract createdList if needed
+    final createdList = (json["createdList"] as List?)
+        ?.map((item) => item.toString())
+        .toList() ?? [];
+
+    return WeeklyLessonPendingResponse(
+      list: list,
+      week: week,
+      createdList: createdList,
+    );
+  }
+
+  // FIX 9: Filter teachers with actual upcoming classes
+  List<WeeklyLessonPending> get filteredList =>
+      list.where((t) => t.hasPendingClasses).toList();
+
+  // Helper to check if there are any upcoming classes
+  bool get hasPendingClasses => filteredList.isNotEmpty;
+}
+
+
+final weeklyLessonPendingProvider =
+FutureProvider.autoDispose<WeeklyLessonPendingResponse>((ref) async {
+  final api = ref.watch(staffApiProvider);
+
+  final response = await api.getWeeklyLessonPending();
+
+  return WeeklyLessonPendingResponse(
+    list: response.list
+        .where((t) => t.hasPendingClasses)
+        .toList(),
+    week: response.week,
+    createdList: response.createdList,
+  );
 });
 
 class WeeklyLessonPlansScreen extends ConsumerStatefulWidget {
@@ -106,7 +165,7 @@ class _WeeklyLessonPlansScreenState
         slivers: [
           // App Bar with gradient
           SliverAppBar(
-            expandedHeight: 160.h,
+            expandedHeight: 130.h, // Increased height to accommodate week info
             floating: false,
             pinned: true,
             backgroundColor: Colors.transparent,
@@ -161,7 +220,7 @@ class _WeeklyLessonPlansScreenState
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Pending Lesson Plans",
+                                    "Lesson Plans",
                                     style: TextStyle(
                                       fontSize: 22.sp,
                                       fontWeight: FontWeight.bold,
@@ -177,12 +236,31 @@ class _WeeklyLessonPlansScreenState
                                     ),
                                   ),
                                   SizedBox(height: 4.h),
-                                  Text(
-                                    "Weekly teaching schedules pending submission",
-                                    style: TextStyle(
-                                      fontSize: 14.sp,
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontWeight: FontWeight.w500,
+                                  // FIX 11: Display the week in the app bar
+                                  async.when(
+                                    data: (response) => Text(
+                                      "Week: ${response.week}",
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    loading: () => Text(
+                                      "Loading week...",
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    error: (_, __) => Text(
+                                      "Week information unavailable",
+                                      style: TextStyle(
+                                        fontSize: 14.sp,
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -232,7 +310,7 @@ class _WeeklyLessonPlansScreenState
                       ),
                       SizedBox(height: 16.h),
                       Text(
-                        "Loading Pending Plans...",
+                        "Loading Upcoming Plans...",
                         style: TextStyle(
                           fontSize: 16.sp,
                           color: Colors.grey.shade600,
@@ -294,7 +372,8 @@ class _WeeklyLessonPlansScreenState
                   ),
                 ),
               ),
-              data: (list) {
+              data: (response) {
+                final list = response.filteredList;
                 if (list.isEmpty) {
                   return _buildEmptyState();
                 }
@@ -303,7 +382,71 @@ class _WeeklyLessonPlansScreenState
                   padding:
                   EdgeInsets.only(left: 16.w, right: 16.w, bottom: 16.w),
                   child: Column(
-                    children: list.map((t) => _buildTeacherCard(t)).toList(),
+                    children: [
+                      // FIX 12: Display the week as a header card
+                      Container(
+                        margin: EdgeInsets.only(bottom: 8.h),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 50.w,
+                          vertical: 12.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 20.w,
+                              color: Color(0xFF667EEA),
+                            ),
+                            SizedBox(width: 12.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Upcoming Week",
+                                    style: TextStyle(
+                                      fontSize: 12.sp,
+                                      color: Colors.grey.shade500,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    response.week,
+                                    style: TextStyle(
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 12.w,
+                                vertical: 6.h,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Color(0xFF667EEA).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ...list.map((t) => _buildTeacherCard(t)),
+                    ],
                   ),
                 );
               },
@@ -319,7 +462,7 @@ class _WeeklyLessonPlansScreenState
     final pendingCount = teacher.classList.length;
     final primaryColor = _getTeacherColor(teacher.teacherId);
 
-    // FIX 6: Guard — don't render card if no pending classes
+    // FIX 6: Guard — don't render card if no upcoming classes
     if (!teacher.hasPendingClasses) return const SizedBox.shrink();
 
     return Container(
@@ -340,78 +483,91 @@ class _WeeklyLessonPlansScreenState
               // Teacher Header
               Padding(
                 padding: EdgeInsets.only(
-                    left: 15.w, right: 15.w, bottom: 10.w, top: 15),
+                    left: 15.w, right: 15.w, bottom: 10.w, top: 10),
                 child: Row(
                   children: [
                     // Teacher Avatar
-                    Container(
-                      width: 56.w,
-                      height: 56.h,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            primaryColor,
-                            primaryColor.withOpacity(0.8),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: primaryColor.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          teacher.initials,
-                          style: TextStyle(
-                            fontSize: 18.sp,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 16.w),
+                    // Container(
+                    //   width: 56.w,
+                    //   height: 56.h,
+                    //   decoration: BoxDecoration(
+                    //     gradient: LinearGradient(
+                    //       colors: [
+                    //         primaryColor,
+                    //         primaryColor.withOpacity(0.8),
+                    //       ],
+                    //       begin: Alignment.topLeft,
+                    //       end: Alignment.bottomRight,
+                    //     ),
+                    //     shape: BoxShape.circle,
+                    //     boxShadow: [
+                    //       BoxShadow(
+                    //         color: primaryColor.withOpacity(0.3),
+                    //         blurRadius: 8,
+                    //         offset: Offset(0, 4),
+                    //       ),
+                    //     ],
+                    //   ),
+                    //   child: Center(
+                    //     child: Text(
+                    //       teacher.initials,
+                    //       style: TextStyle(
+                    //         fontSize: 18.sp,
+                    //         fontWeight: FontWeight.bold,
+                    //         color: Colors.white,
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                    // SizedBox(width: 16.w),
 
                     // Teacher Info
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            teacher.name,
-                            style: TextStyle(
-                              fontSize: 16.sp,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey.shade800,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          // Text(
+                          //   teacher.name,
+                          //   style: TextStyle(
+                          //     fontSize: 16.sp,
+                          //     fontWeight: FontWeight.w600,
+                          //     color: Colors.grey.shade800,
+                          //   ),
+                          //   maxLines: 1,
+                          //   overflow: TextOverflow.ellipsis,
+                          // ),
+                          // SizedBox(height: 4.h),
+                          // // FIX 13: Display week next to teacher info too
+                          // Center(
+                          //   child: Text(
+                          //     "Week: ${teacher.week}",
+                          //     style: TextStyle(
+                          //       fontSize: 12.sp,
+                          //       color: Colors.grey.shade500,
+                          //     ),
+                          //   ),
+                          // ),
                           SizedBox(height: 4.h),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 10.w,
-                              vertical: 4.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade50,
-                              borderRadius: BorderRadius.circular(12.r),
-                              border: Border.all(
-                                color: Colors.orange.shade100,
+                          Center(
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 10.w,
+                                vertical: 4.h,
                               ),
-                            ),
-                            child: Text(
-                              "$pendingCount pending ${pendingCount == 1 ? 'class' : 'classes'}",
-                              style: TextStyle(
-                                fontSize: 12.sp,
-                                color: Colors.orange.shade700,
-                                fontWeight: FontWeight.w600,
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: Colors.orange.shade100,
+                                ),
+                              ),
+                              child: Text(
+                                "$pendingCount upcoming ${pendingCount == 1 ? 'class' : 'classes'}",
+                                style: TextStyle(
+                                  fontSize: 12.sp,
+                                  color: Colors.orange.shade700,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
@@ -441,25 +597,24 @@ class _WeeklyLessonPlansScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.warning_amber_outlined,
-                                size: 18.w,
-                                color: Colors.orange.shade600,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                "Pending Weekly Lesson Plans",
-                                style: TextStyle(
-                                  fontSize: 15.sp,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12.h),
+                          // Row(
+                          //   children: [
+                          //     Icon(
+                          //       Icons.warning_amber_outlined,
+                          //       size: 18.w,
+                          //       color: Colors.orange.shade600,
+                          //     ),
+                          //     SizedBox(width: 8.w),
+                          //     Text(
+                          //       "upcoming Weekly Lesson Plans",
+                          //       style: TextStyle(
+                          //         fontSize: 15.sp,
+                          //         fontWeight: FontWeight.w600,
+                          //         color: Colors.grey.shade800,
+                          //       ),
+                          //     ),
+                          //   ],
+                          // ),
 
                           // Classes List
                           ...teacher.classList.asMap().entries.map((entry) {
@@ -523,7 +678,7 @@ class _WeeklyLessonPlansScreenState
                                             ),
                                           ),
                                           child: Text(
-                                            "Pending",
+                                            "upcoming",
                                             style: TextStyle(
                                               fontSize: 11.sp,
                                               color: Colors.red.shade700,
@@ -590,7 +745,7 @@ class _WeeklyLessonPlansScreenState
           ),
           SizedBox(height: 8.h),
           Text(
-            "No pending weekly lesson plans found.\nAll teachers have submitted their schedules.",
+            "No upcoming weekly lesson plans found.\nAll teachers have submitted their schedules.",
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14.sp,
@@ -598,22 +753,6 @@ class _WeeklyLessonPlansScreenState
             ),
           ),
           SizedBox(height: 24.h),
-          // ElevatedButton.icon(
-          //   onPressed: () => ref.refresh(weeklyLessonPendingProvider),
-          //   icon: Icon(Icons.refresh_outlined, size: 18.w),
-          //   label: Text("Refresh"),
-          //   style: ElevatedButton.styleFrom(
-          //     backgroundColor: Color(0xFF667EEA),
-          //     foregroundColor: Colors.white,
-          //     shape: RoundedRectangleBorder(
-          //       borderRadius: BorderRadius.circular(12.r),
-          //     ),
-          //     padding: EdgeInsets.symmetric(
-          //       horizontal: 24.w,
-          //       vertical: 12.h,
-          //     ),
-          //   ),
-          // ),
         ],
       ),
     );

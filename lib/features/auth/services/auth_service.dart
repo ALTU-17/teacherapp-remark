@@ -255,7 +255,12 @@ class AuthService {
 
         final teacherDetails = await getTeacherDetails();
         final adminDetails = await getTeacherDetailFromAdmin();
+
+        print('🔵 Calling getPunchInOut from logInUser()');
+
         final punch = await getPunchInOut();
+
+        print('🟢 getPunchInOut returned: $punch');
 
         final mergedDetails =
         adminDetails?.copyWith(classs: teacherDetails?.classs);
@@ -270,14 +275,27 @@ class AuthService {
   }
 
   Future<TeacherUser?> refreshUser(String year) async {
+    print('🔥🔥🔥 refreshUser() CALLED 🔥🔥🔥');
+    print('🔥 refresh year = $year');
+
     final cachedUser = getCachedUser();
+
+    print('🔥 refresh cachedUser = $cachedUser');
+
     if (cachedUser == null) {
+      print('❌ refreshUser STOPPED: cachedUser NULL');
       Utils.toast("No cached user found");
       return null;
     }
+
+    print('✅ cachedUser found');
     final teacherDetails = await getTeacherDetails(year);
     final adminDetails = await getTeacherDetailFromAdmin();
+    print('🔵 Calling getPunchInOut from refreshUser()');
+
     final punch = await getPunchInOut();
+
+    print('🟢 getPunchInOut returned: $punch');
 
     final mergedDetails = adminDetails?.copyWith(
       classs: teacherDetails?.classs ?? cachedUser.teacherDetails?.classs,
@@ -332,7 +350,7 @@ class AuthService {
         return user;
       }
     } catch (e) {
-      Utils.toast("Login error: ${e.toString()}");
+      Utils.toast("Update error: ${e.toString()}");
     }
     return null;
   }
@@ -457,23 +475,50 @@ class AuthService {
     }
   }
 
+
+
   Future<PunchInOut?> getPunchInOut() async {
-    final cachedUser = getCachedUser();
-    if (cachedUser == null) {
-      Utils.toast("No cached user found");
-      return null;
-    }
+    print('========================================');
+    print('🔵 getPunchInOut() STARTED');
 
-    final verification = cachedUser.teacherVerification;
-    final regId = cachedUser.regId;
-
-    if (!_hasRequiredPunchData(verification, regId)) {
-      Utils.toast("Missing required punch data");
-      return null;
-    }
-
-    final url = '${verification!.teacherapkUrl}AdminApi/get_punch_in_out_time';
     try {
+      final cachedUser = getCachedUser();
+
+      print('🟡 cachedUser: $cachedUser');
+
+      if (cachedUser == null) {
+        print('🔴 getPunchInOut STOPPED: cachedUser is NULL');
+        Utils.toast("No cached user found");
+        return null;
+      }
+
+      final verification = cachedUser.teacherVerification;
+      final regId = cachedUser.regId;
+
+      print('🟡 verification: $verification');
+      print('🟡 regId: $regId');
+
+      if (verification == null) {
+        print('🔴 getPunchInOut STOPPED: verification is NULL');
+        Utils.toast("Missing teacher verification data");
+        return null;
+      }
+
+      if (regId == null) {
+        print('🔴 getPunchInOut STOPPED: regId is NULL');
+        Utils.toast("Missing teacher registration ID");
+        return null;
+      }
+
+      final url =
+          '${verification.teacherapkUrl}AdminApi/get_punch_in_out_time';
+
+      print('🟢 API CALL STARTING');
+      print('🌐 URL: $url');
+      print('📤 reg_id: $regId');
+      print('📤 teacher_id: $regId');
+      print('📤 short_name: ${verification.shortName}');
+
       final response = await apiClient.post(
         url,
         data: FormData.fromMap({
@@ -483,15 +528,84 @@ class AuthService {
         }),
       );
 
-      if (response.statusCode == 200 && response.data != null) {
-        return PunchInOut.fromJson(response.data);
+      print('🟢 API CALL COMPLETED');
+      print('📥 Status Code: ${response.statusCode}');
+      print('📥 Response Data: ${response.data}');
+
+      if (response.statusCode != 200 || response.data == null) {
+        print('🔴 Invalid punch response');
+        Utils.toast("Failed to fetch punch data");
+        return null;
       }
-      Utils.toast("Failed to fetch punch data");
-    } catch (e) {
-      Utils.toast("Error fetching punch data: ${e.toString()}");
+
+      final responseData = response.data;
+
+      print('🟡 responseData type: ${responseData.runtimeType}');
+
+      // API response:
+      // {
+      //   status: true,
+      //   pipo_data: [
+      //     {
+      //       employee_id: 101,
+      //       date_part: "2026-08-31",
+      //       punch_in_time: "07:48:07",
+      //       punch_out_time: "07:55:57",
+      //       name: "AFSHA SAYYAD"
+      //     }
+      //   ]
+      // }
+
+      final pipoData = responseData['pipo_data'];
+
+      if (pipoData == null ||
+          pipoData is! List ||
+          pipoData.isEmpty) {
+        print('🟡 No punch record found');
+        return null;
+      }
+
+      final punchJson = Map<String, dynamic>.from(
+        pipoData.first as Map,
+      );
+
+      print('🟢 Punch JSON: $punchJson');
+
+      final punch = PunchInOut.fromJson(punchJson);
+
+      print('🟢 Punch parsed successfully');
+      print('🟢 Employee ID: ${punch.employeeId}');
+      print('🟢 Date: ${punch.datePart}');
+      print('🟢 Punch In: ${punch.punchInTime}');
+      print('🟢 Punch Out: ${punch.punchOutTime}');
+      print('🟢 Name: ${punch.name}');
+
+      return punch;
+    } on DioException catch (e, st) {
+      print('========================================');
+      print('🔴 DIO ERROR in getPunchInOut()');
+      print('🔴 Message: ${e.message}');
+      print('🔴 URL: ${e.requestOptions.uri}');
+      print('🔴 Status: ${e.response?.statusCode}');
+      print('🔴 Response: ${e.response?.data}');
+      print('🔴 StackTrace: $st');
+      print('========================================');
+
+      Utils.toast("Punch API error: ${e.message}");
+      return null;
+    } catch (e, st) {
+      print('========================================');
+      print('🔴 GENERAL ERROR in getPunchInOut()');
+      print('🔴 Error: $e');
+      print('🔴 StackTrace: $st');
+      print('========================================');
+
+      Utils.toast("Error fetching punch data: $e");
+      return null;
     }
-    return null;
   }
+
+
 
   Future onRecivePassword() async {
     try {

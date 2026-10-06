@@ -29,6 +29,9 @@ class EditAddHomeWorkView extends HookConsumerWidget {
   final Homework? h;
   const EditAddHomeWorkView(this.h, {super.key});
 
+  // 👇 Max allowed attachment size: 5 MB
+  static const int _maxAttachmentBytes = 5 * 1024 * 1024;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Use hooks for state management
@@ -52,7 +55,17 @@ class EditAddHomeWorkView extends HookConsumerWidget {
     final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
     final homeworkP = ref.read(homeWorkPProvider.notifier);
     final homework = ref.watch(homeWorkPProvider);
-
+    String _formatFileSize(int bytes) {
+      if (bytes < 1024) {
+        return "${bytes.toStringAsFixed(0)} B";
+      } else if (bytes < 1024 * 1024) {
+        return "${(bytes / 1024).toStringAsFixed(2)} KB";
+      } else if (bytes < 1024 * 1024 * 1024) {
+        return "${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB";
+      } else {
+        return "${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB";
+      }
+    }
     void _loadAttachments() async {
       loadingAttachments.value = true;
       try {
@@ -64,6 +77,7 @@ class EditAddHomeWorkView extends HookConsumerWidget {
         loadingAttachments.value = false;
       }
     }
+
     // Load existing attachments for edit mode
     useEffect(() {
       if (h != null) {
@@ -71,6 +85,29 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       }
       return null;
     }, [h]);
+
+    // 👇 Helper: Validate file sizes before accepting
+    List<PlatformFile> _filterValidFiles(List<PlatformFile> files) {
+      final accepted = <PlatformFile>[];
+      final rejected = <String>[];
+
+      for (final file in files) {
+        if (file.size > _maxAttachmentBytes) {
+          rejected.add('"${file.name}" (${_formatFileSize(file.size)})');
+        } else {
+          accepted.add(file);
+        }
+      }
+
+      if (rejected.isNotEmpty) {
+        _showSnackBar(
+          context,
+          '❌ File(s) exceed 5 MB limit: ${rejected.join(", ")}',
+        );
+      }
+
+      return accepted;
+    }
 
     void _pickFiles() async {
       try {
@@ -87,7 +124,21 @@ class EditAddHomeWorkView extends HookConsumerWidget {
               print('Warning: File ${file.name} has no bytes data');
             }
           }
-          pickedFiles.value = [...pickedFiles.value, ...result.files];
+
+          // 👇 Filter out files larger than 5MB
+          final validFiles = _filterValidFiles(result.files);
+
+          if (validFiles.isEmpty) {
+            return; // All were rejected, snackbar already shown
+          }
+
+          // 👇 Duplicate-name guard (avoid same file added twice)
+          final existingNames = pickedFiles.value.map((f) => f.name).toSet();
+          final toAdd = validFiles
+              .where((f) => !existingNames.contains(f.name))
+              .toList();
+
+          pickedFiles.value = [...pickedFiles.value, ...toAdd];
         }
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -100,16 +151,29 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       _pickFiles();
     }
 
-    String _formatFileSize(int bytes) {
-      if (bytes < 1024) {
-        return "${bytes.toStringAsFixed(0)} B";
-      } else if (bytes < 1024 * 1024) {
-        return "${(bytes / 1024).toStringAsFixed(2)} KB";
-      } else if (bytes < 1024 * 1024 * 1024) {
-        return "${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB";
-      } else {
-        return "${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB";
-      }
+
+
+    // 👇 Small note widget under attachments header
+    Widget _buildAttachmentNote() {
+      return Padding(
+        padding: EdgeInsets.only(top: 4.h, bottom: 6.h),
+        child: Row(
+          children: [
+            Icon(Icons.info_outline, size: 14.sp, color: Colors.orange.shade700),
+            SizedBox(width: 6.w),
+            Expanded(
+              child: Text(
+                "Attachments must be under 5 MB. Larger files will be rejected.",
+                style: TextStyle(
+                  fontSize: 12.sp,
+                  color: Colors.orange.shade700,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     Widget _getFileIcon(String fileName) {
@@ -188,7 +252,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       }
     }
 
-    Future<void> _downloadFileIOS(String url, String fileName, FlutterLocalNotificationsPlugin notificationsPlugin) async {
+    Future<void> _downloadFileIOS(String url, String fileName,
+        FlutterLocalNotificationsPlugin notificationsPlugin) async {
       isDownloading.value = true;
 
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -222,7 +287,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
             payload: filePath,
           );
 
-          _showSnackBar(context, 'Find it in the Files/On My iPhone/Teacher App/Homework.');
+          _showSnackBar(
+              context, 'Find it in the Files/On My iPhone/Teacher App/Homework.');
         } else {
           await notificationsPlugin.show(
             0,
@@ -230,7 +296,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
             'Failed to download file: ${response.statusCode}',
             platformChannelSpecifics,
           );
-          _showSnackBar(context, 'Failed to download file: ${response.statusCode}');
+          _showSnackBar(
+              context, 'Failed to download file: ${response.statusCode}');
         }
       } catch (e) {
         await notificationsPlugin.show(
@@ -245,14 +312,9 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       }
     }
 
-    Future<void> _handleDownload(String url,String imageName) async {
-
+    Future<void> _handleDownload(String url, String imageName) async {
       try {
-        // if (attachment.fileSize == "0") {
-        //   _showSnackBar(context, 'File not uploaded properly');
-        // } else {
-
-        String originalUrl = url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
+        String originalUrl = url;
         String reformattedDateStr;
         String baseDownloadUrl = originalUrl;
 
@@ -262,19 +324,18 @@ class EditAddHomeWorkView extends HookConsumerWidget {
         if (dateMatch != null && dateMatch.group(0) != null) {
           String extractedDate = dateMatch.group(0)!;
           try {
-            // Parse the extracted date (dd-MM-yyyy)
             DateFormat inputFormat = DateFormat('dd-MM-yyyy');
             DateTime parsedDate = inputFormat.parse(extractedDate);
             DateFormat outputFormat = DateFormat('yyyy-MM-dd');
-            reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
+            reformattedDateStr = outputFormat.format(parsedDate);
             print('Original Date from URL: $extractedDate');
             print('Reformatted Date: $reformattedDateStr');
-            baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
+            baseDownloadUrl =
+                originalUrl.replaceFirst(extractedDate, reformattedDateStr);
             print('Potentially modified base URL for download: $baseDownloadUrl');
-
           } catch (e) {
             print('Error parsing or formatting date from URL: $e');
-            reformattedDateStr = "N/A"; // Or handle as an error
+            reformattedDateStr = "N/A";
           }
         } else {
           print('Date not found in URL path or format is unexpected.');
@@ -284,20 +345,20 @@ class EditAddHomeWorkView extends HookConsumerWidget {
         print('Homework Download URL: $downloadUrl');
 
         if (Platform.isAndroid) {
-          await _downloadFileAndroid(downloadUrl, context, imageName, flutterLocalNotificationsPlugin);
+          await _downloadFileAndroid(
+              downloadUrl, context, imageName, flutterLocalNotificationsPlugin);
         } else if (Platform.isIOS) {
-          await _downloadFileIOS(downloadUrl, imageName, flutterLocalNotificationsPlugin);
+          await _downloadFileIOS(
+              downloadUrl, imageName, flutterLocalNotificationsPlugin);
         } else {
           _showSnackBar(context, 'Unsupported platform');
         }
-        // }
       } catch (e) {
         _showSnackBar(context, 'Failed to download file: $e');
       }
     }
 
     Future<void> onOpenAttachment(String url) async {
-      // Similar to your remark implementation
       final uri = Uri.tryParse(url);
       if (uri == null) {
         _showSnackBar(context, 'Invalid attachment URL');
@@ -313,23 +374,14 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       }
     }
 
-    // void _handleDownload(String url) async {
-    //   isDownloading.value = true;
-    //   try {
-    //     final filename = url.split("/").last;
-    //     await Utils().onDownload(filename, [url], subfolder: 'TeacherApp/Homework');
-    //   } finally {
-    //     isDownloading.value = false;
-    //   }
-    // }
-
     void onDelete(String filename) async {
       final x = await showDialog<bool?>(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text("Confirm Delete"),
-            content: const Text("Are you sure you want to delete this attachment?"),
+            content:
+            const Text("Are you sure you want to delete this attachment?"),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -347,19 +399,26 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       );
       if (x ?? false) {
         await homeworkP.deleteDocument(h!, filename);
-        _loadAttachments(); // Reload attachments after deletion
-        refreshTrigger.value++; // Trigger UI refresh
+        _loadAttachments();
+        refreshTrigger.value++;
         return;
       }
     }
 
+    // 👇 onSave with upload-failure detection
     onSave() async {
       final s = fromKey.currentState?.saveAndValidate() ?? false;
 
       if (selectedClass.value != null && selectedSubject.value != null && s) {
-        // Get files from both FormBuilderFilePicker and manually picked files
-        final formFiles = fromKey.currentState?.value['files'] as List<PlatformFile>? ?? [];
+        final formFiles =
+            fromKey.currentState?.value['files'] as List<PlatformFile>? ?? [];
         final allFiles = [...formFiles, ...pickedFiles.value];
+
+        // 👇 Re-validate sizes (defense in depth)
+        final validFiles = _filterValidFiles(allFiles);
+        if (validFiles.length != allFiles.length) {
+          return; // Some files rejected — snackbar shown by filter
+        }
 
         final d = {
           ...fromKey.currentState?.value ?? {},
@@ -367,14 +426,33 @@ class EditAddHomeWorkView extends HookConsumerWidget {
           ...selectedSubject.value?.toJson() ?? {},
         };
         final x = CreateHomeworkBody.fromJson(d);
-        final y = x.copyWith(files: allFiles);
-        if (await homeworkP.createHomework(y)) {
-          return context.pop();
+        final y = x.copyWith(files: validFiles);
+
+        try {
+          final success = await homeworkP.createHomework(y);
+          if (success) {
+            _showSnackBar(context, 'Homework created successfully');
+            return context.pop();
+          } else {
+            // 👇 Upload/creation failed
+            _showSnackBar(
+              context,
+              '⚠️ Homework could not be saved. Attachments may not have uploaded properly. Please try again.',
+            );
+          }
+        } catch (e) {
+          _showSnackBar(
+            context,
+            '⚠️ Upload failed: $e. Please check your connection and retry.',
+          );
         }
         return;
+      } else {
+        _showSnackBar(context, 'Please fill all required fields');
       }
     }
 
+    // 👇 onEdit with upload-failure detection
     onEdit() async {
       if (fromKey.currentState?.saveAndValidate() ?? false) {
         isUploading.value = true;
@@ -383,16 +461,23 @@ class EditAddHomeWorkView extends HookConsumerWidget {
           print('=== EDIT HOMEWORK DEBUG ===');
           print('Homework ID: ${h?.homeworkId}');
 
-          // Get files from both FormBuilderFilePicker and manually picked files
-          final formFiles = fromKey.currentState?.value['files'] as List<PlatformFile>? ?? [];
+          final formFiles =
+              fromKey.currentState?.value['files'] as List<PlatformFile>? ?? [];
           final allFiles = [...formFiles, ...pickedFiles.value];
 
-          print('Total files to upload: ${allFiles.length}');
+          // 👇 Re-validate sizes (defense in depth)
+          final validFiles = _filterValidFiles(allFiles);
+          if (validFiles.length != allFiles.length) {
+            return; // Some files rejected — snackbar shown by filter
+          }
+
+          print('Total files to upload: ${validFiles.length}');
           print('Form files: ${formFiles.length}');
           print('Picked files: ${pickedFiles.value.length}');
 
           if (pickedFiles.value.isNotEmpty) {
-            print('Picked file names: ${pickedFiles.value.map((f) => f.name).toList()}');
+            print(
+                'Picked file names: ${pickedFiles.value.map((f) => f.name).toList()}');
           }
 
           final d = {
@@ -403,25 +488,33 @@ class EditAddHomeWorkView extends HookConsumerWidget {
           print('Form data: $d');
 
           final x = CreateHomeworkBody.fromJson(d);
-          final y = x.copyWith(files: allFiles);
+          final y = x.copyWith(files: validFiles);
 
           print('Calling updateHomework...');
           final success = await homeworkP.updateHomework(y);
           print('updateHomework result: $success');
 
           if (success) {
-            print('Update successful, clearing picked files and reloading attachments');
+            print(
+                'Update successful, clearing picked files and reloading attachments');
             pickedFiles.value = [];
             _loadAttachments();
             _showSnackBar(context, 'Homework updated successfully');
             return context.pop();
           } else {
-            _showSnackBar(context, 'Failed to update homework - server returned false');
+            // 👇 Update/upload failed on server side
+            _showSnackBar(
+              context,
+              '⚠️ Update failed. Attachments may not have uploaded properly. Please retry.',
+            );
           }
         } catch (e, stackTrace) {
           print('Error in onEdit: $e');
           print('Stack trace: $stackTrace');
-          _showSnackBar(context, 'Error updating homework: $e');
+          _showSnackBar(
+            context,
+            '⚠️ Upload error: $e. Please check your connection and retry.',
+          );
         } finally {
           isUploading.value = false;
         }
@@ -430,7 +523,6 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       }
     }
 
-    // Function to reset only submission date and description fields
     void resetForm() {
       fromKey.currentState?.fields['end_date']?.didChange(null);
       fromKey.currentState?.fields['description']?.didChange('');
@@ -439,9 +531,11 @@ class EditAddHomeWorkView extends HookConsumerWidget {
 
     onDownload(String filename) async {
       final documentUrls = await homeworkP.getDocument(h!);
-      await Utils().onDownload(filename, documentUrls, subfolder: 'TeacherApp/Homework');
+      await Utils()
+          .onDownload(filename, documentUrls, subfolder: 'TeacherApp/Homework');
     }
-
+// near your other useState declarations inside build()
+    final attachPickerKey = useState<int>(0);
     // Build attachment section for create mode
     Widget _buildCreateAttachmentSection() {
       return Column(
@@ -449,10 +543,39 @@ class EditAddHomeWorkView extends HookConsumerWidget {
         children: [
           SizedBox(height: 8.h),
           FormBuilderFilePicker(
+            key: ValueKey('create_picker_${attachPickerKey.value}'), // 👈 force rebuild
             name: "files",
-            // maxFiles: 5,
             withData: true,
             previewImages: true,
+            allowMultiple: true,
+            onChanged: (List<PlatformFile>? files) {
+              if (files == null || files.isEmpty) return;
+
+              final valid = <PlatformFile>[];
+              final rejected = <String>[];
+              for (final f in files) {
+                if (f.size > _maxAttachmentBytes) {
+                  rejected.add('"${f.name}" (${_formatFileSize(f.size)})');
+                } else {
+                  valid.add(f);
+                }
+              }
+
+              if (rejected.isNotEmpty) {
+                _showSnackBar(
+                  context,
+                  '❌ File(s) exceed 5 MB limit: ${rejected.join(", ")}',
+                );
+
+                // 1) Patch the form value so downstream save uses only valid files
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  fromKey.currentState?.patchValue({'files': valid});
+
+                  // 2) Force the picker widget to rebuild → clears stale preview
+                  attachPickerKey.value++;
+                });
+              }
+            },
             typeSelectors: [
               TypeSelector(
                 type: FileType.any,
@@ -466,18 +589,14 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                         color: Colors.black,
                       ),
                     ),
-                    SizedBox(width: 210),
-
-                    Icon(
-                      Icons.attach_file,
-                      color: Colors.blue,
-                    ),
+                    SizedBox(width: 160),
+                    Icon(Icons.attach_file, color: Colors.blue),
                   ],
                 ),
               ),
             ],
             decoration: const InputDecoration(
-              border: InputBorder.none, // ✅ No underline or border
+              border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
               errorBorder: InputBorder.none,
@@ -485,10 +604,10 @@ class EditAddHomeWorkView extends HookConsumerWidget {
               contentPadding: EdgeInsets.zero,
             ),
           ),
+          _buildAttachmentNote(),
         ],
       );
     }
-
 
     // Build attachment section for edit mode
     Widget _buildEditAttachmentSection() {
@@ -500,11 +619,18 @@ class EditAddHomeWorkView extends HookConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Attachments", style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text("Attachments",
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               if (isDownloading.value)
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
               else if (isUploading.value)
-                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
               else
                 IconButton(
                   icon: const Icon(Icons.attach_file, color: Colors.blue),
@@ -512,6 +638,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                 ),
             ],
           ),
+
+          _buildAttachmentNote(), // 👈 small note
 
           if (isUploading.value)
             const Padding(
@@ -567,7 +695,7 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                                   color: Colors.blue, size: 20),
                               onPressed: isDownloading.value
                                   ? null
-                                  : () => _handleDownload(url,fileName),
+                                  : () => _handleDownload(url, fileName),
                               tooltip: "Download",
                             ),
                             IconButton(
@@ -598,7 +726,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text("New files to add (${pickedFiles.value.length}):",
-                      style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                      style: TextStyle(
+                          fontSize: 14.sp, fontWeight: FontWeight.bold)),
                   ...pickedFiles.value.map((file) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Card(
@@ -611,7 +740,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                crossAxisAlignment:
+                                CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     file.name,
@@ -623,7 +753,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                                   Text(
                                     _formatFileSize(file.size),
                                     style: TextStyle(
-                                        fontSize: 12.sp, color: Colors.grey),
+                                        fontSize: 12.sp,
+                                        color: Colors.grey),
                                   ),
                                 ],
                               ),
@@ -718,7 +849,8 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                           ),
                         )
                             .toList(),
-                        decoration: const InputDecoration(border: InputBorder.none),
+                        decoration:
+                        const InputDecoration(border: InputBorder.none),
                         onChanged: (v) {
                           selectedClass.value = v;
                           subjectsP.onChange(v);
@@ -832,29 +964,6 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                   if (h != null) _buildEditAttachmentSection(),
                   if (h == null) _buildCreateAttachmentSection(),
 
-                  // Visible FormBuilderFilePicker for additional file selection
-                  // SizedBox(height: 10.h),
-                  // FormBuilderFilePicker(
-                  //   name: "files",
-                  //   maxFiles: 5,
-                  //   withData: true,
-                  //   previewImages: true,
-                  //   typeSelectors: [
-                  //     TypeSelector(
-                  //       type: FileType.any,
-                  //       selector: Row(
-                  //         children: <Widget>[
-                  //           Icon(Icons.add_circle),
-                  //           Padding(
-                  //             padding: const EdgeInsets.only(left: 8.0),
-                  //             child: Text("Add attachments"),
-                  //           ),
-                  //         ],
-                  //       ),
-                  //     ),
-                  //   ],
-                  // ),
-
                   SizedBox(height: 10.h),
 
                   // Save & Reset Buttons
@@ -863,21 +972,39 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                       Expanded(
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 78, 157, 222),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
+                            backgroundColor:
+                            const Color.fromARGB(255, 78, 157, 222),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.r)),
                             padding: EdgeInsets.symmetric(vertical: 12.h),
                           ),
-                          onPressed: (isUploading.value || isDownloading.value || homework.isLoading)
+                          onPressed: (isUploading.value ||
+                              isDownloading.value ||
+                              homework.isLoading)
                               ? null
-                              : h != null ? onEdit : onSave,
-                          icon: (isUploading.value || isDownloading.value || homework.isLoading)
-                              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : Icon(Icons.save, size: 16.sp, color: Colors.white),
+                              : h != null
+                              ? onEdit
+                              : onSave,
+                          icon: (isUploading.value ||
+                              isDownloading.value ||
+                              homework.isLoading)
+                              ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                              : Icon(Icons.save,
+                              size: 16.sp, color: Colors.white),
                           label: Text(
-                            (isUploading.value || isDownloading.value || homework.isLoading)
+                            (isUploading.value ||
+                                isDownloading.value ||
+                                homework.isLoading)
                                 ? "Processing..."
-                                : h != null ? "Update" : "Save",
-                            style: TextStyle(color: Colors.white, fontSize: 14),
+                                : h != null
+                                ? "Update"
+                                : "Save",
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 14),
                           ),
                         ),
                       ),
@@ -886,12 +1013,16 @@ class EditAddHomeWorkView extends HookConsumerWidget {
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.grey.shade400,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.r)),
                             padding: EdgeInsets.symmetric(vertical: 12.h),
                           ),
                           onPressed: resetForm,
-                          icon: Icon(Icons.refresh, size: 16.sp, color: Colors.black),
-                          label: const Text("Reset", style: TextStyle(color: Colors.black, fontSize: 14)),
+                          icon: Icon(Icons.refresh,
+                              size: 16.sp, color: Colors.black),
+                          label: const Text("Reset",
+                              style: TextStyle(
+                                  color: Colors.black, fontSize: 14)),
                         ),
                       ),
                     ],
@@ -904,6 +1035,7 @@ class EditAddHomeWorkView extends HookConsumerWidget {
       ),
     );
   }
+
   void _showSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),

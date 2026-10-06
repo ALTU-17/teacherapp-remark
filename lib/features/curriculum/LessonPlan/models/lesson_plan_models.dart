@@ -501,22 +501,73 @@ class LessonPlanHeadingNonDailyResponse {
   }
 }
 
+
+class LessonPlanHeadingDaily {
+  final int lessonPlanHeadingsId;
+  final String name;
+  final int sequence;
+
+  LessonPlanHeadingDaily({
+    required this.lessonPlanHeadingsId,
+    required this.name,
+    required this.sequence,
+  });
+
+  factory LessonPlanHeadingDaily.fromJson(Map<String, dynamic> json) {
+    return LessonPlanHeadingDaily(
+      lessonPlanHeadingsId: json['lesson_plan_headings_id'],
+      name: json['name'] ?? '',
+      sequence: json['sequence'] ?? 0,
+    );
+  }
+}
+
+class LessonPlanHeadingDailyResponse {
+  final bool success;
+  final List<LessonPlanHeadingDaily> data;
+  final String message;
+  final int status;
+
+  LessonPlanHeadingDailyResponse({
+    required this.success,
+    required this.data,
+    required this.message,
+    required this.status,
+  });
+
+  factory LessonPlanHeadingDailyResponse.fromJson(Map<String, dynamic> json) {
+    return LessonPlanHeadingDailyResponse(
+      success: json['success'] ?? false,
+      data: (json['data'] as List)
+          .map((e) => LessonPlanHeadingDaily.fromJson(e))
+          .toList(),
+      message: json['message'] ?? '',
+      status: json['status'] ?? 0,
+    );
+  }
+}
+
 class LessonPlanDetailsResponse {
   final int status;
-  final LessonPlanDetailsData data;
   final bool success;
+  final String message;
+  final LessonPlanDetailsData? data; // ✅ nullable
 
   LessonPlanDetailsResponse({
     required this.status,
-    required this.data,
     required this.success,
+    required this.message,
+    this.data,
   });
 
   factory LessonPlanDetailsResponse.fromJson(Map<String, dynamic> json) {
     return LessonPlanDetailsResponse(
       status: json['status'] ?? 0,
-      data: LessonPlanDetailsData.fromJson(json['data']),
       success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      data: json['data'] != null // ✅ only parse if not null
+          ? LessonPlanDetailsData.fromJson(json['data'])
+          : null,
     );
   }
 }

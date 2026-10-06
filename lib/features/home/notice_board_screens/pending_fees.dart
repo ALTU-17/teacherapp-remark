@@ -86,6 +86,21 @@ class PendingFeesScreen extends ConsumerStatefulWidget {
 class _PendingFeesScreenState extends ConsumerState<PendingFeesScreen> {
   int? expandedStudentId;
 
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(pendingFeesProvider);
+    });
+  }
+
+  final pendingFeesProvider =
+  FutureProvider.autoDispose<List<PendingFeeGroup>>((ref) async {
+    final api = ref.watch(staffApiProvider);
+    return await api.getPendingFees();
+  });
+
   // Validation function
   String? _validateStudentData(PendingFeeGroup student) {
     if (student.fullName.trim().isEmpty) {

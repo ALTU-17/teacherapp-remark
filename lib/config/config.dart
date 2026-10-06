@@ -58,6 +58,7 @@ class Config {
 
       if (response.statusCode == 200) {
         final body = json.decode(response.body);
+        print('fetching dynamic endpoint:: ${response.body}');
 
         // The API returns just a string, e.g. "https://api.aceventura.in/demo/evolvuUserService/"
         if (body is String && body.isNotEmpty) {

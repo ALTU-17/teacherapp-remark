@@ -376,6 +376,14 @@ class PendFeeRoute extends GoRouteData with _$PendFeeRoute {
   Widget build(BuildContext context, GoRouterState state) =>
       const PendingFeesScreen();
 }
+@TypedGoRoute<MissedAttendanceCardRoute>(path: '/MissedAttendanceCardRoute')
+class MissedAttendanceCardRoute extends GoRouteData with _$MissedAttendanceCardRoute {
+  const MissedAttendanceCardRoute();
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) =>
+      const MissedAttendanceCard();
+}
 @TypedGoRoute<WLPlanRoute>(path: '/WLPlan')
 class WLPlanRoute extends GoRouteData with _$WLPlanRoute {
   const WLPlanRoute();

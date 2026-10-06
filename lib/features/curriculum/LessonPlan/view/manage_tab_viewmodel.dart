@@ -61,16 +61,17 @@ class ManageTabViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Make sure we're using the correct ID (the database ID, not unqId)
       final response = await _apiService.deleteLessonPlan(
-        lessonPlanId: lessonPlanId,
+        lessonPlanId: lessonPlanId, // This should be the actual database ID
       );
 
       if (response['success'] == true) {
         _deleteSuccess = true;
         _deleteMessage = response['message'] ?? 'Deleted successfully';
 
-        // ✅ Remove from local list immediately — no re-fetch needed
-        _lessonPlans.removeWhere((p) => p.unqId == lessonPlanId);
+        // ✅ Remove from local list using the correct ID
+        _lessonPlans.removeWhere((p) => p.unqId == lessonPlanId); // Use 'id' not 'unqId'
         _applySearch(); // re-apply search filter on updated list
       } else {
         _error = response['message'] ?? 'Failed to delete';
@@ -83,7 +84,6 @@ class ManageTabViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
   Future<void> updateLessonPlanStatus({
     required int lessonPlanId,
     required String? status,

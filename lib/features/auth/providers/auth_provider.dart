@@ -178,7 +178,7 @@ class TeacherDetails1 {
     String? phone,
     String? bloodGroup,
     String? address,
-    String? permanentAddress,
+    String? paermanentAddress,
   }) {
     return TeacherDetails1(
       phone: phone ?? this.phone,

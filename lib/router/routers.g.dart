@@ -825,6 +825,28 @@ mixin _$PendFeeRoute on GoRouteData {
   @override
   void replace(BuildContext context) => context.replace(location);
 }
+mixin _$MissedAttendanceCardRoute on GoRouteData {
+  static MissedAttendanceCardRoute _fromState(GoRouterState state) =>
+      MissedAttendanceCardRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/MissedAttendanceCardRoute',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
 mixin _$WLPlanRoute on GoRouteData {
   static WLPlanRoute _fromState(GoRouterState state) =>
       WLPlanRoute();

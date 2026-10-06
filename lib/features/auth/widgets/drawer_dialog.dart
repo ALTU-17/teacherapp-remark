@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:teacherapp/features/home/views/dashboard_view.dart';
 import 'package:teacherapp/router/routers.dart';
@@ -20,11 +21,35 @@ class CardItem {
   });
 }
 
-class DrawerPage extends ConsumerWidget {
+class DrawerPage extends ConsumerStatefulWidget {
   const DrawerPage({super.key});
 
   @override
-  Widget build(BuildContext context, ref) {
+  ConsumerState<DrawerPage> createState() => _DrawerPageState();
+}
+
+class _DrawerPageState extends ConsumerState<DrawerPage> {
+  String packageInfoVar = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+
+    if (!mounted) return;
+
+    setState(() {
+      packageInfoVar = packageInfo.version;
+    });
+  }
+
+
+  @override
+  Widget build(BuildContext context) {
     List<CardItem> cardItems = [
       // CardItem(
       //   imagePath:'assets/parents.png',
@@ -79,19 +104,22 @@ class DrawerPage extends ConsumerWidget {
             );
           },
         ),
-      CardItem(
-          imagePath: 'assets/applogo.png',
-          title: 'Version ${DashboardView.packageInfoVar}',
-          onTap: () {
-            Share.share(
-              'https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool.teacherapp',
-              subject: 'Teacher App!',
-            );
-          },
-        ),
 
       CardItem(
-        imagePath: 'assets/ace.png',
+        imagePath: 'assets/applogo.png',
+        title: packageInfoVar.isEmpty
+            ? 'Version ...'
+            : 'Version $packageInfoVar',
+        onTap: () {
+          Share.share(
+            'https://play.google.com/store/apps/details?id=in.aceventura.evolvuschool.teacherapp',
+            subject: 'Teacher App!',
+          );
+        },
+      ),
+
+      CardItem(
+        imagePath: 'assets/newlogo.png',
         title: 'About Us',
         onTap: () {
           Navigator.of(context).pop();

@@ -151,6 +151,23 @@ class ApiService {
     return LessonPlanResponse.fromJson(jsonDecode(response.body));
   }
 
+  Future<LessonPlanHeadingDailyResponse> getLessonPlanHeadingDaily() async {
+    final baseUrl = await _getBaseUrl();
+    final headers = await _getHeaders();
+
+    final response = await http.get(
+      Uri.parse('${baseUrl}get_lesson_plan_heading_daily'),
+      headers: headers,
+    );
+
+    log('get_lesson_plan_heading_daily response: ${response.body}');
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load daily headings: ${response.statusCode}');
+    }
+
+    return LessonPlanHeadingDailyResponse.fromJson(jsonDecode(response.body));
+  }
 
 
   Future<LessonPlanDetailsResponse> getLessonPlanDetails({
@@ -175,13 +192,15 @@ class ApiService {
       ),
       headers: headers,
     );
-    log('get_lesson_plan_details  Response body: ${response.body}');
-    if (response.statusCode != 200) {
-      throw Exception('Failed to load lesson plan details: ${response.statusCode}');
-    }
 
-    return LessonPlanDetailsResponse.fromJson(jsonDecode(response.body));
+    log('get_lesson_plan_details Response body: ${response.body}');
+
+    // ✅ Parse regardless of status code — let fromJson handle it
+    final decoded = jsonDecode(response.body);
+    return LessonPlanDetailsResponse.fromJson(decoded);
   }
+
+
 // In lp_api_service.dart
   Future<Map<String, dynamic>> getLessonPlanByUnqId(int unqId) async {
     final baseUrl = await _getBaseUrl();
@@ -194,6 +213,7 @@ class ApiService {
 
       print('get_lesson_plan_by_unq_id Response status: ${response.statusCode}');
       print('get_lesson_plan_by_unq_id Response body: ${response.body}');
+      log('log ===>>> get_lesson_plan_by_unq_id Response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
@@ -234,13 +254,15 @@ class ApiService {
     final baseUrl = await _getBaseUrl();
     final headers = await _getHeaders();
 
+    // Ensure we're using the correct endpoint
     final response = await http.delete(
       Uri.parse('${baseUrl}delete_lesson_plan/$lessonPlanId'),
       headers: headers,
     );
 
-    print('lessonPlanId in delete_lesson_plan response: ${lessonPlanId}');
-    print('delete_lesson_plan response: ${response.body}');
+    print('Deleting lesson plan with ID: $lessonPlanId');
+    print('Delete response status: ${response.statusCode}');
+    print('Delete response body: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('Failed to delete lesson plan: ${response.statusCode}');

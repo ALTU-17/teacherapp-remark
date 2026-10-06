@@ -274,7 +274,7 @@ class _ManageTabState extends ConsumerState<ManageTab> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildLabel('Select Class', required: true),
+                                        _buildLabel('Select Class', required: false),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<TeacherClassData>(
                                           value: _viewModel.selectedClass,
@@ -312,7 +312,7 @@ class _ManageTabState extends ConsumerState<ManageTab> {
                                     child: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
-                                        _buildLabel('Select Subject', required: true),
+                                        _buildLabel('Select Subject', required: false),
                                         const SizedBox(height: 6),
                                         DropdownButtonFormField<SubjectData>(
                                           value: _viewModel.selectedSubject,
@@ -430,27 +430,27 @@ class _ManageTabState extends ConsumerState<ManageTab> {
                       const SizedBox(height: 5),
 
                       // Search Bar
-                      Card(
-                        elevation: 2,
-                        child: TextField(
-                          onChanged: (v) => _viewModel.updateSearchQuery(v),
-                          decoration: InputDecoration(
-                            hintText: 'Search...',
-                            prefixIcon: const Icon(Icons.search, size: 20),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(24),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 10,
-                            ),
-                            fillColor: Colors.white,
-                            filled: true,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 5),
+                      // Card(
+                      //   elevation: 2,
+                      //   child: TextField(
+                      //     onChanged: (v) => _viewModel.updateSearchQuery(v),
+                      //     decoration: InputDecoration(
+                      //       hintText: 'Search...',
+                      //       prefixIcon: const Icon(Icons.search, size: 20),
+                      //       border: OutlineInputBorder(
+                      //         borderRadius: BorderRadius.circular(24),
+                      //         borderSide: BorderSide.none,
+                      //       ),
+                      //       contentPadding: const EdgeInsets.symmetric(
+                      //         horizontal: 16,
+                      //         vertical: 10,
+                      //       ),
+                      //       fillColor: Colors.white,
+                      //       filled: true,
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(height: 5),
 
                       // Horizontal Scroll Table
                       if (_viewModel.lessonPlans.isNotEmpty)
@@ -875,107 +875,137 @@ class _PlanTabState extends ConsumerState<PlanTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                    Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
+                      Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                        child: Padding(
+                          padding: EdgeInsets.all(16.w),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                padding: EdgeInsets.all(8.w),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(8.r),
-                                ),
-                                child: Icon(Icons.playlist_add_rounded, color: Colors.blue.shade700, size: 20.w),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(8.w),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(8.r),
+                                    ),
+                                    child: Icon(Icons.playlist_add_rounded, color: Colors.blue.shade700, size: 20.w),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  Text(
+                                    'Create Lesson Plan',
+                                    style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                                  ),
+                                ],
                               ),
-                              SizedBox(width: 10.w),
-                              Text(
-                                'Create Lesson Plan',
-                                style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                              SizedBox(height: 14.h),
+                              // Replace the first Row (Class + Subject) with:
+                              _buildMultiClassSelector(),
+                              SizedBox(height: 10.h),
+                              _buildStyledDropdown<SubjectData>(
+                                value: _viewModel.selectedSubject,
+                                hint: 'Select Subject',
+                                items: _viewModel.subjects,
+                                displayValue: (item) => item?.name ?? '',
+                                onChanged: (value) => _viewModel.selectSubject(value),
+                                isRequired: true,
                               ),
-                            ],
-                          ),
-                          SizedBox(height: 14.h),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildStyledDropdown<TeacherClassData>(
-                                  value: _viewModel.selectedClass,
-                                  hint: 'Select Class',
-                                  items: _viewModel.classes,
-                                  displayValue: (item) => item?.fullClassName ?? '',
-                                  onChanged: (value) => _viewModel.selectClass(value),
-                                  isRequired: true,
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: _buildStyledDropdown<SubjectData>(
-                                  value: _viewModel.selectedSubject,
-                                  hint: 'Select Subject',
-                                  items: _viewModel.subjects,
-                                  displayValue: (item) => item?.name ?? '',
-                                  onChanged: (value) => _viewModel.selectSubject(value),
-                                  isRequired: true,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 10.h),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildStyledDropdown<ChapterData>(
-                                  value: _viewModel.selectedChapter,
-                                  hint: 'Select Chapter',
-                                  items: _viewModel.chapters,
-                                  displayValue: (item) => item != null ? '${item.chapterNo}. ${item.name}' : '',
-                                  onChanged: (value) => _viewModel.selectChapter(value),
-                                  isRequired: true,
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 12.0),
-                                  child: SizedBox(
-                                    height: 50.h,
-                                    child: ElevatedButton.icon(
-                                      onPressed: _viewModel.selectedClass != null && _viewModel.selectedSubject != null
-                                          ? () => _viewModel.browse()
-                                          : null,
-                                      icon: _viewModel.isLoading
-                                          ? SizedBox(
-                                        width: 18.w,
-                                        height: 18.h,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              SizedBox(height: 10.h),
+// Keep Chapter + Browse row as-is
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildStyledDropdown<ChapterData>(
+                                      value: _viewModel.selectedChapter,
+                                      hint: 'Select Chapter',
+                                      items: _viewModel.chapters,
+                                      displayValue: (item) =>
+                                      item != null ? '${item.chapterNo}. ${item.name}' : '',
+                                      onChanged: (value) => _viewModel.selectChapter(value),
+                                      isRequired: true,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10.w),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 12.0),
+                                      child: SizedBox(
+                                        height: 50.h,
+                                        child: ElevatedButton.icon(
+                                          onPressed: _viewModel.selectedClasses.isNotEmpty &&
+                                              _viewModel.selectedSubject != null
+                                              ? () => _viewModel.browse()
+                                              : null,
+                                          icon: _viewModel.isLoading
+                                              ? SizedBox(
+                                            width: 18.w,
+                                            height: 18.h,
+                                            child: const CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor:
+                                              AlwaysStoppedAnimation<Color>(Colors.white),
+                                            ),
+                                          )
+                                              : Icon(Icons.search_rounded, size: 18.w),
+                                          label: Text(_viewModel.isLoading ? 'Loading...' : 'Browse'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.blue.shade700,
+                                            foregroundColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(10.r)),
+                                            disabledBackgroundColor: Colors.grey.shade400,
+                                          ),
                                         ),
-                                      )
-                                          : Icon(Icons.search_rounded, size: 18.w),
-                                      label: Text(_viewModel.isLoading ? 'Loading...' : 'Browse'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.blue.shade700,
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
-                                        disabledBackgroundColor: Colors.grey.shade400,
                                       ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ),
+                              // Add inside the Card, after the Chapter + Browse row:
+                              if (_viewModel.error != null)
+                                Padding(
+                                  padding: EdgeInsets.only(top: 10.h),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: EdgeInsets.all(12.w),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade50,
+                                      borderRadius: BorderRadius.circular(8.r),
+                                      border: Border.all(color: Colors.red.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.info_outline_rounded,
+                                            color: Colors.red.shade700, size: 18.w),
+                                        SizedBox(width: 8.w),
+                                        if(_viewModel.error == 'Lesson Plan Template is not created!!!')
+                                          Expanded(
+                                            child: Text(
+                                              _viewModel.error!,
+                                              style: TextStyle(
+                                                fontSize: 12.sp,
+                                                color: Colors.red.shade700,
+                                              ),
+                                            ),
+                                          ) else  Expanded(
+                                          child: Text(
+                                            'Chapters not created',
+                                            style: TextStyle(
+                                              fontSize: 12.sp,
+                                              color: Colors.red.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
                       if (_viewModel.isFormVisible) _buildFormContent(),
                     ],
                   ),
@@ -985,6 +1015,191 @@ class _PlanTabState extends ConsumerState<PlanTab> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildMultiClassSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        RichText(
+          text: TextSpan(
+            text: 'Select Class',
+            style: TextStyle(
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            children: [
+              TextSpan(
+                text: ' *',
+                style: TextStyle(color: Colors.red.shade700),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: 4.h),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.r),
+            border: Border.all(
+              color: _viewModel.classSelectionError != null
+                  ? Colors.red
+                  : Colors.grey.shade300,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ── Selected chips ────────────────────────
+              if (_viewModel.selectedClasses.isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.fromLTRB(8.w, 8.h, 8.w, 0),
+                  child: Wrap(
+                    spacing: 6.w,
+                    runSpacing: 4.h,
+                    children: _viewModel.selectedClasses.map((cls) {
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 10.w, vertical: 4.h),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(20.r),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              cls.fullClassName,
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(width: 4.w),
+                            GestureDetector(
+                              onTap: () =>
+                                  _viewModel.toggleClassSelection(cls),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 14.w,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+
+              // ── Dropdown row ──────────────────────────
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: ButtonTheme(
+                        alignedDropdown: true,
+                        child: DropdownButton<TeacherClassData>(
+                          value: null, // always null so hint shows
+                          hint: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4.w),
+                            child: Text(
+                              _viewModel.selectedClasses.isEmpty
+                                  ? 'Select Class'
+                                  : 'Add another section',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ),
+                          isExpanded: true,
+                          icon: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: Colors.grey.shade600,
+                          ),
+                          items: _viewModel.classes.map((cls) {
+                            final isSelected = _viewModel.selectedClasses
+                                .any((c) => c.sectionId == cls.sectionId);
+                            return DropdownMenuItem<TeacherClassData>(
+                              value: cls,
+                              child: Row(
+                                children: [
+                                  if (isSelected)
+                                    Icon(Icons.check_rounded,
+                                        size: 16.w,
+                                        color: Colors.blue.shade700),
+                                  if (isSelected) SizedBox(width: 6.w),
+                                  Text(
+                                    cls.fullClassName,
+                                    style: TextStyle(
+                                      fontSize: 13.sp,
+                                      color: isSelected
+                                          ? Colors.blue.shade700
+                                          : Colors.black87,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              _viewModel.toggleClassSelection(value);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Clear all button
+                  if (_viewModel.selectedClasses.isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(right: 8.w),
+                      child: GestureDetector(
+                        onTap: () => _viewModel.clearClassSelection(),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18.w,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // ── Validation error ──────────────────────────
+        if (_viewModel.classSelectionError != null)
+          Padding(
+            padding: EdgeInsets.only(top: 6.h, left: 4.w),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 14.w, color: Colors.red.shade700),
+                SizedBox(width: 4.w),
+                Expanded(
+                  child: Text(
+                    _viewModel.classSelectionError!,
+                    style: TextStyle(
+                      fontSize: 11.sp,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
   Widget _buildStyledDropdown<T>({
@@ -1082,12 +1297,12 @@ class _PlanTabState extends ConsumerState<PlanTab> {
                     label: 'Week Date *',
                     hint: 'Select week',
                     errorText: _viewModel.dateError,
-    onTap: () async {
-    final result = await showWeekPickerDialog(context);
-    if (result != null) {
-    // ✅ Store week range + start/end dates in viewmodel
-    _viewModel.setSelectedWeek(result.label, result.start, result.end);
-    }
+                    onTap: () async {
+                      final result = await showWeekPickerDialog(context);
+                      if (result != null) {
+                        // ✅ Store week range + start/end dates in viewmodel
+                        _viewModel.setSelectedWeek(result.label, result.start, result.end);
+                      }
 
                     },
                   ),
@@ -1286,14 +1501,30 @@ class _PlanTabState extends ConsumerState<PlanTab> {
                       Expanded(
                         child: TextField(
                           controller: field.controller,
-                          maxLines: 3,
+                          maxLines: null, // ✅ allows unlimited lines
+                          keyboardType: TextInputType.multiline,
                           decoration: InputDecoration(
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8.r)),
                             contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                            hintText: 'Enter details...',
+                            hintText: '• Enter details...',
                             isDense: true,
                           ),
                           style: TextStyle(fontSize: 12.sp),
+                          onChanged: (value) {
+                            // Auto-add bullet when typing starts or new line added
+                            if (value.isNotEmpty) {
+                              _applyBulletFormatting(field.controller);
+                            }
+                          },
+                          onTap: () {
+                            // Add first bullet when field is tapped and empty
+                            if (field.controller.text.isEmpty) {
+                              field.controller.value = const TextEditingValue(
+                                text: '• ',
+                                selection: TextSelection.collapsed(offset: 2),
+                              );
+                            }
+                          },
                         ),
                       ),
                     ],
@@ -1315,7 +1546,8 @@ class _PlanTabState extends ConsumerState<PlanTab> {
           children: [
             Icon(Icons.list_alt_rounded, color: Colors.blue.shade700, size: 18.w),
             SizedBox(width: 8.w),
-            Text('Teaching Points', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
+            Text('Teaching Points',
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600)),
             const Spacer(),
             FloatingActionButton.small(
               onPressed: () => _viewModel.addTeachingPoint(),
@@ -1330,86 +1562,151 @@ class _PlanTabState extends ConsumerState<PlanTab> {
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(10.r),
           ),
-          child: Column(
-            children: [
-              // Header
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(10.r),
-                    topRight: Radius.circular(10.r),
-                  ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10.r),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minWidth: MediaQuery.of(context).size.width - 32.w,
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(width: 130.w, child: Text('Start Date*', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.blue.shade700))),
-                    Expanded(child: Text('Teaching Point*', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.blue.shade700))),
-                    SizedBox(width: 50.w, child: Text('Action', style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w700, color: Colors.blue.shade700,))),
+                    // ── Dynamic Header ────────────────────────
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                      ),
+                      child: Row(
+                        children: [
+                          // Fixed: Start Date column
+                          SizedBox(
+                            width: 140.w,
+                            child: Text(
+                              'Start Date*',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blue.shade700,
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          // Dynamic: one column per daily heading
+                          ..._viewModel.dailyHeadingsList.map((h) => SizedBox(
+                            width: 180.w, // Fixed width for each day column
+                            child: Text(
+                              '${    h.name}*',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blue.shade700,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )),
+                          // Fixed: Action column
+                          SizedBox(
+                            width: 50.w,
+                            child: Text(
+                              'Delete',
+                              style: TextStyle(
+                                fontSize: 13.sp,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.blue.shade700,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // ── Rows ─────────────────────────────────
+                    ..._viewModel.teachingPoints.asMap().entries.map(
+                          (e) => _buildTeachingRow(
+                        e.key, e.value, _viewModel.dailyHeadingsList,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              // Rows
-              ..._viewModel.teachingPoints.asMap().entries.map(
-                    (e) => _buildTeachingRow(e.key, e.value),
-              ),
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTeachingRow(int index, TeachingPointData point) {
+  Widget _buildTeachingRow(
+      int index, TeachingPointData point, List<LessonPlanHeadingDaily> headings) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(
+          bottom: index < _viewModel.teachingPoints.length - 1
+              ? BorderSide(color: Colors.grey.shade200)
+              : BorderSide.none,
+        ),
         color: index.isEven ? Colors.white : Colors.grey.shade50,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Start Date ──────────────────────────────
           SizedBox(
-            width: 130.w,
+            width: 140.w,
             child: TextField(
               controller: point.dateController,
               readOnly: true,
               decoration: InputDecoration(
                 hintText: 'DD/MM/YYYY',
                 hintStyle: TextStyle(fontSize: 11.sp),
-                suffixIcon: Icon(Icons.calendar_today_rounded, size: 14.w),
+                suffixIcon: Icon(Icons.calendar_today_rounded, size: 16.w),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: point.dateError != null ? Colors.red : Colors.grey.shade300),
+                  borderSide: BorderSide(
+                      color: point.dateError != null
+                          ? Colors.red
+                          : Colors.grey.shade300),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: point.dateError != null ? Colors.red : Colors.grey.shade300),
+                  borderSide: BorderSide(
+                      color: point.dateError != null
+                          ? Colors.red
+                          : Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                  borderSide: BorderSide(
+                      color: point.dateError != null
+                          ? Colors.red
+                          : Colors.blue.shade700,
+                      width: 2),
                 ),
                 errorText: point.dateError,
-                contentPadding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 8.h),
+                contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
                 isDense: true,
+                errorStyle: TextStyle(fontSize: 10.sp),
               ),
               style: TextStyle(fontSize: 12.sp),
               onTap: () async {
-                // ✅ Guard: week must be selected first
                 if (_viewModel.selectedWeekStart == null ||
                     _viewModel.selectedWeekEnd == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Row(
-                        children: [
-                          Icon(Icons.warning_amber_rounded,
-                              color: Colors.white, size: 20),
-                          SizedBox(width: 10),
-                          Text('Please select a week first'),
-                        ],
-                      ),
+                      content: const Row(children: [
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.white, size: 20),
+                        SizedBox(width: 10),
+                        Text('Please select a week first'),
+                      ]),
                       backgroundColor: const Color(0xFFC62828),
                       behavior: SnackBarBehavior.floating,
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10)),
                       duration: const Duration(seconds: 2),
@@ -1420,9 +1717,9 @@ class _PlanTabState extends ConsumerState<PlanTab> {
 
                 final date = await showDatePicker(
                   context: context,
-                  initialDate: _viewModel.selectedWeekStart!, // ✅ open on week start
-                  firstDate: _viewModel.selectedWeekStart!,   // ✅ can't go before week
-                  lastDate: _viewModel.selectedWeekEnd!,      // ✅ can't go after week
+                  initialDate: _viewModel.selectedWeekStart!,
+                  firstDate: _viewModel.selectedWeekStart!,
+                  lastDate: _viewModel.selectedWeekEnd!,
                 );
 
                 if (date != null) {
@@ -1435,41 +1732,88 @@ class _PlanTabState extends ConsumerState<PlanTab> {
               },
             ),
           ),
-          SizedBox(width: 10.w),
-          Expanded(
-            child: TextField(
-              controller: point.pointController,
-              decoration: InputDecoration(
-                hintText: 'Enter teaching point...',
-                hintStyle: TextStyle(fontSize: 12.sp),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: point.pointError != null ? Colors.red : Colors.grey.shade300),
+          SizedBox(width: 8.w),
+
+          // ── Dynamic columns per daily heading ───────
+          ...headings.map((heading) {
+            final ctrl = point.dynamicControllers[heading.lessonPlanHeadingsId];
+            if (ctrl == null) return const SizedBox.shrink();
+
+            final isFirstHeading =
+                heading.lessonPlanHeadingsId == headings.first.lessonPlanHeadingsId;
+
+            return SizedBox(
+              width: 180.w,
+              child: Padding(
+                padding: EdgeInsets.only(
+                    right: heading == headings.last ? 0 : 8.w),
+                child: TextField(
+                  controller: ctrl,
+                  keyboardType: TextInputType.multiline,
+                  maxLines: null,
+                  minLines: 2,
+                  decoration: InputDecoration(
+                    hintText: '• ${heading.name}...',
+                    hintStyle: TextStyle(fontSize: 11.sp),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                          color: isFirstHeading && point.pointError != null
+                              ? Colors.red
+                              : Colors.grey.shade300),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                          color: isFirstHeading && point.pointError != null
+                              ? Colors.red
+                              : Colors.grey.shade300),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                      borderSide: BorderSide(
+                          color: isFirstHeading && point.pointError != null
+                              ? Colors.red
+                              : Colors.blue.shade700,
+                          width: 2),
+                    ),
+                    errorText: isFirstHeading ? point.pointError : null,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 10.h),
+                    isDense: true,
+                    errorStyle: TextStyle(fontSize: 10.sp),
+                  ),
+                  style: TextStyle(fontSize: 12.sp),
+                  onTap: () {
+                    if (ctrl.text.isEmpty) {
+                      ctrl.value = const TextEditingValue(
+                        text: '• ',
+                        selection: TextSelection.collapsed(offset: 2),
+                      );
+                    }
+                  },
+                  onChanged: (value) {
+                    if (value.isNotEmpty) _applyBulletFormatting(ctrl);
+                    if (isFirstHeading) {
+                      point.pointError = null;
+                      _viewModel.clearFieldErrors();
+                    }
+                  },
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                  borderSide: BorderSide(color: point.pointError != null ? Colors.red : Colors.grey.shade300),
-                ),
-                errorText: point.pointError,
-                contentPadding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                isDense: true,
               ),
-              style: TextStyle(fontSize: 12.sp),
-              maxLines: 2,
-              onChanged: (_) {
-                point.pointError = null;
-                _viewModel.clearFieldErrors();
-              },
-            ),
-          ),
+            );
+          }),
+
+          // ── Delete ──────────────────────────────────
           SizedBox(
             width: 50.w,
             child: Center(
               child: IconButton(
                 onPressed: () => _viewModel.removeTeachingPoint(index),
-                icon: Icon(Icons.delete_outline_rounded, size: 20.w, color: Colors.red.shade700),
+                icon: Icon(Icons.delete_outline_rounded,
+                    size: 22.w, color: Colors.red.shade700),
                 padding: EdgeInsets.zero,
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
+                splashRadius: 20,
               ),
             ),
           ),
@@ -1489,7 +1833,13 @@ class _PlanTabState extends ConsumerState<PlanTab> {
               final periodsEmpty = _viewModel.periodsController.text.trim().isEmpty;
               final dateEmpty = _viewModel.dateController.text.trim().isEmpty;
               final teachingPointsInvalid = _viewModel.teachingPoints.any((p) => p.dateController.text.trim().isEmpty);
-              final teachingPointsInvalid2 = _viewModel.teachingPoints.any((p) => p.pointController.text.trim().isEmpty);
+
+              final teachingPointsInvalid2 = _viewModel.teachingPoints.any((p) {
+                if (_viewModel.dailyHeadingsList.isEmpty) return false;
+                final firstHeadingId = _viewModel.dailyHeadingsList.first.lessonPlanHeadingsId;
+                final ctrl = p.dynamicControllers[firstHeadingId];
+                return ctrl == null || ctrl.text.trim().isEmpty;
+              });
 
               if (periodsEmpty || dateEmpty || teachingPointsInvalid || teachingPointsInvalid2) {
                 _viewModel.saveLessonPlan();
@@ -1598,6 +1948,74 @@ class _PlanTabState extends ConsumerState<PlanTab> {
       default: return Icons.article_outlined;
     }
   }
+}
+
+// Auto-bullet: ensures every non-empty line starts with "• "
+void _applyBulletFormatting(TextEditingController controller) {
+  final text = controller.text;
+  final selection = controller.selection;
+
+  final lines = text.split('\n');
+  final formattedLines = lines.map((line) {
+    if (line.isEmpty) return line;
+    if (line == '• ') return line; // don't double-bullet empty bullet lines
+    if (line.startsWith('• ')) return line;
+    return '• $line';
+  }).toList();
+
+  final newText = formattedLines.join('\n');
+
+  if (newText != text) {
+    // Calculate new cursor position accounting for added "• " prefixes
+    int cursorPos = selection.baseOffset;
+
+    // Count how many "• " were added before cursor
+    int addedChars = 0;
+    int charCount = 0;
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final lineEnd = charCount + line.length;
+
+      if (cursorPos <= lineEnd) break;
+
+      // This line is fully before cursor
+      if (line.isNotEmpty && !line.startsWith('• ')) {
+        addedChars += 2; // added "• "
+      }
+      charCount += line.length + 1; // +1 for '\n'
+    }
+
+    // Check if current line (where cursor is) also got a bullet added
+    final currentLineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+    final currentLine = text.substring(currentLineStart,
+        text.indexOf('\n', cursorPos) == -1 ? text.length : text.indexOf('\n', cursorPos));
+    if (currentLine.isNotEmpty && !currentLine.startsWith('• ')) {
+      addedChars += 2;
+    }
+
+    final newCursor = (cursorPos + addedChars).clamp(0, newText.length);
+
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newCursor),
+    );
+  }
+}
+
+// Called on Enter key — adds bullet on new line
+void _handleBulletEnter(TextEditingController controller) {
+  final text = controller.text;
+  final selection = controller.selection;
+  if (!selection.isValid) return;
+
+  final cursorPos = selection.baseOffset;
+  final newText = '${text.substring(0, cursorPos)}\n• ${text.substring(cursorPos)}';
+  final newCursor = cursorPos + 3; // '\n• ' = 3 chars
+
+  controller.value = TextEditingValue(
+    text: newText,
+    selection: TextSelection.collapsed(offset: newCursor.clamp(0, newText.length)),
+  );
 }
 
 // Shared Helpers

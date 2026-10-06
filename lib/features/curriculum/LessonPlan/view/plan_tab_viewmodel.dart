@@ -9,6 +9,12 @@ class PlanTabViewModel extends ChangeNotifier {
   final ApiService _apiService;
 
   List<TeacherClassData> _classes = [];
+  List<TeacherClassData> _selectedClasses = [];
+  TeacherClassData? get selectedClass =>
+      _selectedClasses.isNotEmpty ? _selectedClasses.first : null;
+
+  List<TeacherClassData> get selectedClasses => _selectedClasses;
+
   List<SubjectData> _subjects = [];
   List<ChapterData> _chapters = [];
   bool _isLoading = false;
@@ -40,6 +46,11 @@ class PlanTabViewModel extends ChangeNotifier {
     _saveMessage = '';
     notifyListeners();
   }
+// Add field
+  List<LessonPlanHeadingDaily> dailyHeadings = [];
+
+// Getter
+  List<LessonPlanHeadingDaily> get dailyHeadingsList => dailyHeadings;
 
   final List<TeachingPointData> teachingPoints = [TeachingPointData()];
 
@@ -54,7 +65,7 @@ class PlanTabViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isFormVisible => _isFormVisible;
   String? get error => _error;
-  TeacherClassData? get selectedClass => _selectedClass;
+  // TeacherClassData? get selectedClass => _selectedClass;
   SubjectData? get selectedSubject => _selectedSubject;
   ChapterData? get selectedChapter => _selectedChapter;
 
@@ -85,7 +96,7 @@ class PlanTabViewModel extends ChangeNotifier {
 
   // ── Load Subjects ─────────────────────────────────────────────
   Future<void> loadSubjects() async {
-    if (_selectedClass == null) return;
+    if (_selectedClasses.isEmpty) return;
 
     _isLoading = true;
     _error = null;
@@ -93,8 +104,8 @@ class PlanTabViewModel extends ChangeNotifier {
 
     try {
       final response = await _apiService.getSubjectsByClassAndSections(
-        classId: _selectedClass!.classId,
-        sectionIds: [_selectedClass!.sectionId],
+        classId: _selectedClasses.first.classId,
+        sectionIds: _selectedClasses.map((c) => c.sectionId).toList(), // ✅ all sections
       );
 
       if (response.status == 200 && response.data.isNotEmpty) {
@@ -104,7 +115,6 @@ class PlanTabViewModel extends ChangeNotifier {
       }
     } catch (e) {
       _error = e.toString();
-      print('Error loading subjects: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -112,8 +122,9 @@ class PlanTabViewModel extends ChangeNotifier {
   }
 
   // ── Load Chapters ─────────────────────────────────────────────
+// ── Load Chapters (Fixed) ─────────────────────────────────────
   Future<void> loadChapters() async {
-    if (_selectedClass == null || _selectedSubject == null) return;
+    if (_selectedClasses.isEmpty || _selectedSubject == null) return;
 
     _isLoading = true;
     _error = null;
@@ -121,7 +132,7 @@ class PlanTabViewModel extends ChangeNotifier {
 
     try {
       final response = await _apiService.getChapterInfoByClassAndSubject(
-        classId: _selectedClass!.classId,
+        classId: _selectedClasses.first.classId, //  Fixed: Reading from the active list
         subjectId: _selectedSubject!.smId,
       );
 
@@ -140,9 +151,10 @@ class PlanTabViewModel extends ChangeNotifier {
     }
   }
 
-  // ── Load Lesson Plan Details ──────────────────────────────────
+
+
   Future<void> loadLessonPlanDetails() async {
-    if (_selectedClass == null ||
+    if (_selectedClasses.isEmpty ||
         _selectedSubject == null ||
         _selectedChapter == null) {
       _error = 'Please select Class, Subject and Chapter';
@@ -155,23 +167,50 @@ class PlanTabViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final response = await _apiService.getLessonPlanDetails(
-        classId: _selectedClass!.classId,
-        sectionId: _selectedClass!.sectionId,
-        smId: _selectedSubject!.smId,
-        chapterId: _selectedChapter!.chapterId,
-      );
+      final targetClass = _selectedClasses.first;
 
-      presentData = response.data.presentData;
-      unqId = response.data.unqId;
-      lesPlnTempId = response.data.lesPlnTempId;
+      // ✅ Fetch both in parallel
+      final results = await Future.wait([
+        _apiService.getLessonPlanDetails(
+          classId: targetClass.classId,
+          sectionId: targetClass.sectionId,
+          smId: _selectedSubject!.smId,
+          chapterId: _selectedChapter!.chapterId,
+        ),
+        _apiService.getLessonPlanHeadingDaily(),
+      ]);
 
-      // Dispose old controllers before replacing
+      final response = results[0] as LessonPlanDetailsResponse;
+      final dailyResponse = results[1] as LessonPlanHeadingDailyResponse;
+
+      // ✅ Handle API-level failure
+      if (!response.success || response.data == null) {
+        _error = response.message.isNotEmpty
+            ? response.message
+            : 'Lesson plan template is not available for this selection.';
+        _isFormVisible = false;
+        notifyListeners();
+        return;
+      }
+
+      presentData = response.data!.presentData;
+      unqId = response.data!.unqId;
+      lesPlnTempId = response.data!.lesPlnTempId;
+
+      // ✅ Store daily headings
+      dailyHeadings = dailyResponse.success ? dailyResponse.data : [];
+
+      // After: dailyHeadings = dailyResponse.success ? dailyResponse.data : [];
+// Init existing teaching points' dynamic controllers:
+      for (var point in teachingPoints) {
+        point.initDynamicControllers(dailyHeadings);
+      }
+
       for (var field in lessonPlanFields) {
         field.dispose();
       }
 
-      lessonPlanFields = response.data.lessonPlanInfo1.map((heading) {
+      lessonPlanFields = response.data!.lessonPlanInfo1.map((heading) {
         return LessonPlanFieldData(
           lesPlnTempId: heading.lesPlnTempId,
           classId: heading.classId,
@@ -183,8 +222,7 @@ class PlanTabViewModel extends ChangeNotifier {
           lesPlnTempdetailsId: heading.lesPlnTempdetailsId,
           lessonPlanHeadingsId: heading.lessonPlanHeadingsId,
           headingName: heading.headingName,
-          controller:
-          TextEditingController(text: heading.description ?? ''),
+          controller: TextEditingController(text: heading.description ?? ''),
         );
       }).toList();
 
@@ -199,8 +237,31 @@ class PlanTabViewModel extends ChangeNotifier {
   }
 
   // ── Selection Handlers ────────────────────────────────────────
-  void selectClass(TeacherClassData? classData) {
-    _selectedClass = classData;
+  void toggleClassSelection(TeacherClassData classData) {
+    // If already selected, remove it
+    if (_selectedClasses.any((c) => c.sectionId == classData.sectionId)) {
+      _selectedClasses.removeWhere((c) => c.sectionId == classData.sectionId);
+      _selectedSubject = null;
+      _selectedChapter = null;
+      _subjects = [];
+      _chapters = [];
+      _isFormVisible = false;
+      notifyListeners();
+      if (_selectedClasses.isNotEmpty) loadSubjects();
+      return;
+    }
+
+    // Validate: all selected must share the same classId
+    if (_selectedClasses.isNotEmpty &&
+        _selectedClasses.first.classId != classData.classId) {
+      _classSelectionError =
+      'Please select sections from the same class only!';
+      notifyListeners();
+      return;
+    }
+
+    _classSelectionError = null;
+    _selectedClasses.add(classData);
     _selectedSubject = null;
     _selectedChapter = null;
     _subjects = [];
@@ -208,8 +269,22 @@ class PlanTabViewModel extends ChangeNotifier {
     _isFormVisible = false;
     notifyListeners();
 
-    if (classData != null) loadSubjects();
+    loadSubjects();
   }
+
+  void clearClassSelection() {
+    _selectedClasses = [];
+    _selectedSubject = null;
+    _selectedChapter = null;
+    _subjects = [];
+    _chapters = [];
+    _isFormVisible = false;
+    _classSelectionError = null;
+    notifyListeners();
+  }
+
+  String? _classSelectionError;
+  String? get classSelectionError => _classSelectionError;
 
   void selectSubject(SubjectData? subjectData) {
     _selectedSubject = subjectData;
@@ -229,7 +304,7 @@ class PlanTabViewModel extends ChangeNotifier {
 
   // ── Browse ────────────────────────────────────────────────────
   Future<void> browse() async {
-    if (_selectedClass == null ||
+    if (_selectedClasses.isEmpty ||
         _selectedSubject == null ||
         _selectedChapter == null) {
       _error = 'Please select Class, Subject and Chapter';
@@ -241,7 +316,9 @@ class PlanTabViewModel extends ChangeNotifier {
 
   // ── Teaching Points ───────────────────────────────────────────
   void addTeachingPoint() {
-    teachingPoints.add(TeachingPointData());
+    final point = TeachingPointData();
+    point.initDynamicControllers(dailyHeadings); // ✅ init with current headings
+    teachingPoints.add(point);
     notifyListeners();
   }
 
@@ -254,6 +331,7 @@ class PlanTabViewModel extends ChangeNotifier {
 
   // ── Reset / Hide ──────────────────────────────────────────────
   void resetForm() {
+    dailyHeadings = [];
     periodsController.clear();
     dateController.clear();
     _periodsError = null;
@@ -321,7 +399,11 @@ class PlanTabViewModel extends ChangeNotifier {
     selectedWeekEnd = null;
 
     // Reset selections
-    _selectedClass = null;
+    // _selectedClass = null;
+
+    _selectedClasses = [];
+    _classSelectionError = null;
+
     _selectedSubject = null;
     _selectedChapter = null;
     _subjects = [];
@@ -357,7 +439,6 @@ class PlanTabViewModel extends ChangeNotifier {
   bool _validateForm() {
     bool valid = true;
 
-    // Periods
     if (periodsController.text.trim().isEmpty) {
       _periodsError = 'Required';
       valid = false;
@@ -365,7 +446,6 @@ class PlanTabViewModel extends ChangeNotifier {
       _periodsError = null;
     }
 
-    // Date
     if (dateController.text.trim().isEmpty) {
       _dateError = 'Required';
       valid = false;
@@ -373,7 +453,6 @@ class PlanTabViewModel extends ChangeNotifier {
       _dateError = null;
     }
 
-    // Teaching points — each row needs date + point
     for (var point in teachingPoints) {
       if (point.dateController.text.trim().isEmpty) {
         point.dateError = 'Required';
@@ -382,11 +461,16 @@ class PlanTabViewModel extends ChangeNotifier {
         point.dateError = null;
       }
 
-      if (point.pointController.text.trim().isEmpty) {
-        point.pointError = 'Required';
-        valid = false;
-      } else {
-        point.pointError = null;
+      // ✅ Validate first dynamic heading's controller (not the detached getter)
+      if (dailyHeadings.isNotEmpty) {
+        final firstHeadingId = dailyHeadings.first.lessonPlanHeadingsId;
+        final ctrl = point.dynamicControllers[firstHeadingId];
+        if (ctrl == null || ctrl.text.trim().isEmpty) {
+          point.pointError = 'Required';
+          valid = false;
+        } else {
+          point.pointError = null;
+        }
       }
     }
 
@@ -394,32 +478,24 @@ class PlanTabViewModel extends ChangeNotifier {
     return valid;
   }
 
-    // ── Save ──────────────────────────────────────────────────────
+  // ── Save ──────────────────────────────────────────────────────
+// ── Save ──────────────────────────────────────────────────────
   Future<void> saveLessonPlan() async {
     if (!_validateForm()) return;
-    if (_selectedClass == null ||
-        _selectedSubject == null ||
-        _selectedChapter == null) {
-      _error = 'Please select Class, Subject and Chapter';
-      notifyListeners();
-      return;
-    }
-
 
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final classId = _selectedClass!.classId.toString();
-      final sectionId = _selectedClass!.sectionId.toString();
+      final classId = _selectedClasses.first.classId.toString();
+      final List<String> classIdArray = _selectedClasses
+          .map((c) => '$classId^${c.sectionId}')
+          .toList();
       final smId = _selectedSubject!.smId.toString();
       final chapterId = _selectedChapter!.chapterId.toString();
-      final classIdArray = ['$classId^$sectionId'];
 
-
-      // Build description_<headingId>_<row> entries
-      // Row is always 1 for a single lesson plan (non-daily)
+      // Build description fields
       final Map<String, dynamic> descriptions = {};
       for (var field in lessonPlanFields) {
         descriptions['description_${field.lessonPlanHeadingsId}_1'] =
@@ -434,7 +510,7 @@ class PlanTabViewModel extends ChangeNotifier {
         final point = teachingPoints[i];
         final row = i + 1;
 
-        // Convert DD/MM/YYYY → YYYY-MM-DD for API
+        // Convert DD/MM/YYYY → YYYY-MM-DD
         final rawDate = point.dateController.text;
         String formattedDate = rawDate;
         if (rawDate.contains('/')) {
@@ -444,19 +520,26 @@ class PlanTabViewModel extends ChangeNotifier {
             '${parts[2].padLeft(4, '0')}-${parts[1].padLeft(2, '0')}-${parts[0].padLeft(2, '0')}';
           }
         }
-
         startDates.add(formattedDate);
-        dcDescriptions['dc_description_1_$row'] = point.pointController.text;
+
+        // ✅ Dynamic: one key per daily heading per row
+        for (var heading in dailyHeadings) {
+          final ctrl = point.dynamicControllers[heading.lessonPlanHeadingsId];
+          dcDescriptions['dc_description_${heading.lessonPlanHeadingsId}_$row'] =
+              ctrl?.text ?? '';
+        }
       }
 
       final payload = <String, dynamic>{
         'class_id': classId,
-        'section_id': sectionId,
+        'section_id': _selectedClasses
+            .map((c) => c.sectionId.toString())
+            .join(','),
         'sm_id': smId,
         'chapter_id': chapterId,
         'class_id_array': classIdArray,
         'no_of_periods': periodsController.text,
-        'weeklyDatePicker': dateController.text, // e.g. "22-06-2026 / 28-06-2026"
+        'weeklyDatePicker': dateController.text,
         'les_pln_temp_id': lesPlnTempId,
         'approve': 'N',
         'lph_dc_row': teachingPoints.length.toString(),
@@ -482,7 +565,6 @@ class PlanTabViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-
   }
 
 
@@ -506,8 +588,10 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
     BuildContext context) async {
   DateTime focusedDay = DateTime.now();
   final now = DateTime.now();
-  DateTime selectedWeekStart =
-  now.subtract(Duration(days: now.weekday % 7));
+
+  // ✅ Dart's weekday starts at 1 (Monday) and ends at 7 (Sunday).
+  // This correctly finds the Monday of the current week.
+  DateTime selectedWeekStart = now.subtract(Duration(days: now.weekday - 1));
 
   return await showDialog<({String label, DateTime start, DateTime end})>(
     context: context,
@@ -525,8 +609,9 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
           final lastDayOfMonth =
           DateTime(focusedDay.year, focusedDay.month + 1, 0);
 
+          // ✅ Align grid to start on Monday
           final gridStart = firstDayOfMonth
-              .subtract(Duration(days: firstDayOfMonth.weekday % 7));
+              .subtract(Duration(days: firstDayOfMonth.weekday - 1));
 
           final List<DateTime> days = [];
           DateTime cursor = gridStart;
@@ -580,10 +665,10 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
                   ),
                   const SizedBox(height: 8),
 
-                  // ── Day Headers ───────────────────────────────
+                  // ── Day Headers (Updated to start on Monday) ──
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
+                    children: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
                         .map((d) => SizedBox(
                       width: 36,
                       child: Center(
@@ -603,14 +688,16 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
                   ...List.generate((days.length / 7).ceil(), (rowIndex) {
                     final rowDays =
                     days.skip(rowIndex * 7).take(7).toList();
-                    final rowSunday = rowDays.first;
-                    final rowSaturday = rowDays.last;
-                    final isSelectedRow = isInSelectedWeek(rowSunday) ||
-                        isInSelectedWeek(rowSaturday);
+
+                    // ✅ Updated targeting for Mon -> Sun row layout
+                    final rowMonday = rowDays.first;
+                    final rowSunday = rowDays.last;
+                    final isSelectedRow = isInSelectedWeek(rowMonday) ||
+                        isInSelectedWeek(rowSunday);
 
                     return GestureDetector(
                       onTap: () => setDialogState(
-                              () => selectedWeekStart = rowSunday),
+                              () => selectedWeekStart = rowMonday),
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 2),
                         decoration: BoxDecoration(
@@ -640,6 +727,7 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
                                     color: isToday
                                         ? const Color(0xFF1976D2)
                                         : Colors.transparent,
+                                    // (Rest of your original button styling remains unchanged...)
                                   ),
                                   child: Center(
                                     child: Text(
@@ -712,7 +800,6 @@ Future<({String label, DateTime start, DateTime end})?> showWeekPickerDialog(
                       const SizedBox(width: 12),
                       Expanded(
                         child: ElevatedButton(
-                          // ✅ Return record with label + start + end
                           onPressed: () => Navigator.of(ctx).pop((
                           label: '${_fmt(weekStart)} / ${_fmt(weekEnd)}',
                           start: weekStart,
@@ -772,16 +859,33 @@ class LessonPlanFieldData {
 
 class TeachingPointData {
   final TextEditingController dateController = TextEditingController();
-  final TextEditingController pointController = TextEditingController();
-  final TextEditingController timeController = TextEditingController();
+  // dynamic: keyed by lessonPlanHeadingsId
+  final Map<int, TextEditingController> dynamicControllers = {};
 
-  // Validation errors
+  // Keep pointController for backward compat (heading_id=1 = Teaching Points)
+// Replace the getter in TeachingPointData:
+  TextEditingController? get pointController {
+    if (dynamicControllers.isEmpty) return null;
+    // Return first heading's controller (whatever ID it is)
+    return dynamicControllers.values.first;
+  }
+
   String? dateError;
   String? pointError;
 
+  // Initialize dynamic controllers from daily headings
+  void initDynamicControllers(List<LessonPlanHeadingDaily> headings) {
+    for (var h in headings) {
+      if (!dynamicControllers.containsKey(h.lessonPlanHeadingsId)) {
+        dynamicControllers[h.lessonPlanHeadingsId] = TextEditingController();
+      }
+    }
+  }
+
   void dispose() {
     dateController.dispose();
-    pointController.dispose();
-    timeController.dispose();
+    for (var c in dynamicControllers.values) {
+      c.dispose();
+    }
   }
 }

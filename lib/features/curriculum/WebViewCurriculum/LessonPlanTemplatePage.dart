@@ -5,16 +5,16 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../auth/providers/auth_provider.dart';
 
-class LessonPlanTemplatePage extends ConsumerStatefulWidget {
-  const LessonPlanTemplatePage({Key? key}) : super(key: key);
+class LessonPlanTemplatePagee extends ConsumerStatefulWidget {
+  const LessonPlanTemplatePagee({Key? key}) : super(key: key);
 
   @override
-  ConsumerState<LessonPlanTemplatePage> createState() =>
+  ConsumerState<LessonPlanTemplatePagee> createState() =>
       _LessonPlanTemplatePageState();
 }
 
 class _LessonPlanTemplatePageState
-    extends ConsumerState<LessonPlanTemplatePage> {
+    extends ConsumerState<LessonPlanTemplatePagee> {
   late WebViewController _controller;
   bool _isLoading = true;
 

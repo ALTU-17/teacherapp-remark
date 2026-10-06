@@ -14,7 +14,7 @@ class ApiClient extends _$ApiClient {
 
     await Config.fetchDynamicEndpoint();
 
-    final baseUrl = Config.dynamicEndpoint ?? 'https://aceventura.in/demo/evolvuUserService';
+    final baseUrl = Config.dynamicEndpoint ?? '';
 
     //Live else
     // final baseUrl = Config.dynamicEndpoint ?? 'https://aceventura.in/evolvuUserService';

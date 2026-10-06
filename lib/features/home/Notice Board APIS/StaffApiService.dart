@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:http/http.dart' as http;
@@ -83,7 +84,9 @@ class StaffApiService {
   }
 
 
-  Future<int> getTeacherLateCountMonthly() async {
+
+// Update the API function to return the full response with dates
+  Future<Map<String, dynamic>> getTeacherLateCountMonthly() async {
     final baseUrl = await getLaravelBaseUrl();
     final token = await getLaravelToken();
 
@@ -91,15 +94,15 @@ class StaffApiService {
 
     print("LATE COUNT API => $url");
 
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Accept": "application/json",
-      },
-    );
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Accept": "application/json",
+        },
+      );
 
-    print("LATE COUNT RESPONSE => ${response.body}");
+      print("LATE COUNT RESPONSE => ${response.body}");
 
     if (response.statusCode != 200) {
       throw Exception("Failed to fetch late count");
@@ -111,26 +114,66 @@ class StaffApiService {
       throw Exception(json["message"] ?? "Unknown error");
     }
 
-    final List data = json["data"] ?? [];
+    final data = json["data"] ?? [];
 
-    if (data.isEmpty) return 0;
+    // Parse the dates list into LateDayDetails objects
+    final datesList = (data["dates"] as List?)?.map((item) {
+      return LateDayDetails.fromJson(item as Map<String, dynamic>);
+    }).toList() ?? [];
 
-    return data.first["late_days"] ?? 0;
+    return {
+      "late_days": data["late_days"] ?? 0,
+      "dates": datesList,
+    };
   }
 
 
-  Future<List<TeacherReminder>> getTeacherReminders() async {
+  Future<TeacherReminderResponse> getTeacherReminders() async {
     final baseUrl = await getLaravelBaseUrl();
     final token = await getLaravelToken();
 
     final res = await http.get(
       Uri.parse("${baseUrl}get_remark_of_teacher"),
-      headers: {"Authorization": "Bearer $token"},
+      headers: {
+        "Authorization": "Bearer $token",
+      },
     );
-    print("get_remark_of_teacher => ${res.body}");
-    final json = jsonDecode(res.body)["data"] as List;
 
-    return json.map((e) => TeacherReminder.fromJson(e)).toList();
+    print("get_remark_of_teacher => ${res.body}");
+
+    if (res.statusCode != 200) {
+      throw Exception(
+        "Failed to load teacher reminders: ${res.statusCode}",
+      );
+    }
+
+    final Map<String, dynamic> json = jsonDecode(res.body);
+
+    final data = json["data"];
+
+    final reminders = data is List
+        ? data
+        .map(
+          (e) => TeacherReminder.fromJson(
+        Map<String, dynamic>.from(e),
+      ),
+    )
+        .toList()
+        : <TeacherReminder>[];
+
+    AttendanceReminder? attendance;
+
+    if (json["attendance"] != null &&
+        json["attendance"] is Map<String, dynamic>) {
+      attendance = AttendanceReminder.fromJson(
+        json["attendance"],
+      );
+    }
+
+    return TeacherReminderResponse(
+      reminders: reminders,
+      attendance: attendance,
+    );
   }
 
   Future<void> markReminderRead(int id) async {
@@ -331,7 +374,8 @@ class StaffApiService {
   }
 
 
-  Future<List<WeeklyLessonPending>> getWeeklyLessonPending() async {
+// FIX: Update the API function to return the full response
+  Future<WeeklyLessonPendingResponse> getWeeklyLessonPending() async {
     final baseUrl = await getLaravelBaseUrl();
     final token = await getLaravelToken();
 
@@ -341,14 +385,16 @@ class StaffApiService {
       Uri.parse(url),
       headers: {"Authorization": "Bearer $token"},
     );
+    log("list_of_lesson_plan_not_created Body: ${res.body}");
 
     if (res.statusCode != 200) {
       throw Exception("Failed to load lesson pending list");
     }
 
-    final list = jsonDecode(res.body)["list"] as List;
+    final jsonData = jsonDecode(res.body);
 
-    return list.map((e) => WeeklyLessonPending.fromJson(e)).toList();
+    // Now parse the entire response using the wrapper class
+    return WeeklyLessonPendingResponse.fromJson(jsonData);
   }
 
 
@@ -543,6 +589,76 @@ class StaffApiService {
 
     if (res.statusCode != 200) {
       throw Exception('Update failed');
+    }
+  }
+}
+
+class LateDayDetails {
+  final String date;
+  final String lateTime;
+  final String punchTime;
+  final int lateByMinutes;
+
+  LateDayDetails({
+    required this.date,
+    required this.lateTime,
+    required this.punchTime,
+    required this.lateByMinutes,
+  });
+
+  factory LateDayDetails.fromJson(Map<String, dynamic> json) {
+    return LateDayDetails(
+      date: json["date"]?.toString() ?? "",
+      lateTime: json["late_time"]?.toString() ?? "",
+      punchTime: json["punch_time"]?.toString() ?? "",
+      lateByMinutes: json["late_by_minutes"] ?? 0,
+    );
+  }
+
+  String get formattedDate {
+    try {
+      final dateParts = date.split('-');
+      if (dateParts.length == 3) {
+        return "${dateParts[2]}/${dateParts[1]}/${dateParts[0]}";
+      }
+      return date;
+    } catch (_) {
+      return date;
+    }
+  }
+
+  String get formattedLateTime {
+    // Remove seconds if present
+    if (lateTime.contains(':')) {
+      final parts = lateTime.split(':');
+      if (parts.length >= 2) {
+        return "${parts[0]}:${parts[1]}";
+      }
+    }
+    return lateTime;
+  }
+
+  String get formattedPunchTime {
+    // Remove seconds if present
+    if (punchTime.contains(':')) {
+      final parts = punchTime.split(':');
+      if (parts.length >= 2) {
+        return "${parts[0]}:${parts[1]}";
+      }
+    }
+    return punchTime;
+  }
+
+  String get lateDuration {
+    if (lateByMinutes < 60) {
+      return "$lateByMinutes min";
+    } else {
+      final hours = lateByMinutes ~/ 60;
+      final minutes = lateByMinutes % 60;
+      if (minutes == 0) {
+        return "$hours hr";
+      }
+      return "$hours hr $minutes min";
     }
   }
 }

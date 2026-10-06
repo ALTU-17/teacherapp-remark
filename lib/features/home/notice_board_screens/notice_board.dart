@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 import '../../../router/routers.dart';
 import '../views/teacher_id.dart';
@@ -172,6 +174,70 @@ class NoticeCard extends StatelessWidget {
   }
 }
 
+class TeacherReminderResponse {
+  final List<TeacherReminder> reminders;
+  final AttendanceReminder? attendance;
+
+  TeacherReminderResponse({
+    required this.reminders,
+    required this.attendance,
+  });
+}
+
+class PendingAttendance {
+  final String date;
+  final String day;
+
+  PendingAttendance({
+    required this.date,
+    required this.day,
+  });
+
+  factory PendingAttendance.fromJson(Map<String, dynamic> json) {
+    return PendingAttendance(
+      date: json['date']?.toString() ?? '',
+      day: json['day']?.toString() ?? '',
+    );
+  }
+}
+
+class AttendanceReminder {
+  final bool isClassTeacher;
+  final String className;
+  final String sectionName;
+  final bool isAttendanceMarkedToday;
+  final List<PendingAttendance> pendingAttendance;
+
+  AttendanceReminder({
+    required this.isClassTeacher,
+    required this.className,
+    required this.sectionName,
+    required this.isAttendanceMarkedToday,
+    required this.pendingAttendance,
+  });
+
+  factory AttendanceReminder.fromJson(Map<String, dynamic> json) {
+    final pending = json['pending_attendance'];
+
+    return AttendanceReminder(
+      isClassTeacher: json['is_class_teacher'] == true,
+      className: json['class_name']?.toString() ?? '',
+      sectionName: json['section_name']?.toString() ?? '',
+      isAttendanceMarkedToday:
+      json['is_attendance_marked_today'] == true,
+      pendingAttendance: pending is List
+          ? pending
+          .map(
+            (e) => PendingAttendance.fromJson(
+          Map<String, dynamic>.from(e),
+        ),
+      )
+          .toList()
+          : [],
+    );
+  }
+}
+
 class TeacherReminder {
   final int id;
   final String subject;
@@ -210,16 +276,44 @@ FutureProvider<List<DashboardNoticeConfig>>((ref) async {
   return api.getTeacherMobileDashboard();
 });
 
-final remindersProvider = FutureProvider<List<TeacherReminder>>((ref) async {
+final teacherReminderResponseProvider =
+FutureProvider<TeacherReminderResponse>((ref) async {
   final api = ref.watch(staffApiProvider);
-  final list = await api.getTeacherReminders();
-  return list.where((r) => r.publish == "Y").toList();
+
+  return api.getTeacherReminders();
 });
 
-final remindersProviderCount = FutureProvider<List<TeacherReminder>>((ref) async {
-  final api = ref.watch(staffApiProvider);
-  final count = await api.getTeacherReminders();
-  return count.where((r) => r.publish == "Y" && r.readStatus == 0).toList();
+final remindersProvider =
+FutureProvider<List<TeacherReminder>>((ref) async {
+  final response =
+  await ref.watch(teacherReminderResponseProvider.future);
+
+  return response.reminders
+      .where(
+        (r) => r.publish == "Y" && r.readStatus == 0,
+  )
+      .toList();
+});
+
+final attendanceReminderProvider =
+FutureProvider<AttendanceReminder?>((ref) async {
+  final response =
+  await ref.watch(teacherReminderResponseProvider.future);
+
+  return response.attendance;
+});
+
+final remindersProviderCount =
+FutureProvider<List<TeacherReminder>>((ref) async {
+
+  final response =
+  await ref.watch(teacherReminderResponseProvider.future);
+
+  return response.reminders
+      .where(
+        (r) => r.publish == "Y" && r.readStatus == 0,
+  )
+      .toList();
 });
 
 void _openReminders(BuildContext context, WidgetRef ref) {
@@ -228,6 +322,14 @@ void _openReminders(BuildContext context, WidgetRef ref) {
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => ReminderListSheet(),
+  );
+}
+void _Attendance(BuildContext context, WidgetRef ref) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (_) => AttendanceListSheet(),
   );
 }
 
@@ -253,7 +355,7 @@ Map<String, NoticeItem Function(int)> noticeCardFactory(
     "lessonPlan": (count) => NoticeItem(
       icon: Icons.menu_book_rounded,
       title: "Weekly Lesson Plans",
-      subtitle: "Lesson plans not created",
+      subtitle: "Upcoming Lesson plans",
       count: count,
       onTap: () => const WLPlanRoute().push(context),
     ),
@@ -275,67 +377,35 @@ Map<String, NoticeItem Function(int)> noticeCardFactory(
     ),
     "Reminder": (count) => NoticeItem(
       icon: Icons.notifications_active_rounded,
-      title: "Reminders",
-      subtitle: "Reminders for you",
+      title: "Notifications",
+      subtitle: "Notifications for you",
       count: count,
       onTap: () => _openReminders(context, ref),
+    ),
+    "MissedAttendance": (count) => NoticeItem(
+      icon: Icons.notifications_active_rounded,
+      title: "Pending Attendance",
+      subtitle: "Pending Attendance Reminder",
+      count: count,
+      onTap: () => _Attendance(context, ref),
     ),
   };
 }
 
 
-class NoticeBoardScreen extends ConsumerWidget {
-  const NoticeBoardScreen({super.key});
+class NoticeBoardScreen extends HookConsumerWidget {
+  const NoticeBoardScreen({super.key}); // 👈 Added missing semicolon here
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final noticeItems = [
-      NoticeItem(
-        icon: Icons.cake_rounded,
-        title: "Upcoming Birthdays",
-        subtitle: "View today, tomorrow & yesterday birthdays",
-        count: 3,
-        onTap: () => const BirthdayRoute().push(context),
-      ),
-      NoticeItem(
-        icon: Icons.assignment_rounded,
-        title: "Today's Homework",
-        subtitle: "3 assignments given",
-        count: 3,
-        onTap: () => const TodayHomeworkRoute().push(context),
-      ),
-      NoticeItem(
-        icon: Icons.payments_rounded,
-        title: "Pending Fees",
-        subtitle: "3 students with pending fees",
-        count: 3,
-        onTap: () => const PendFeeRoute().push(context),
-      ),
-      NoticeItem(
-        icon: Icons.menu_book_rounded,
-        title: "Weekly Lesson Plans",
-        subtitle: "2 approved, 1 pending",
-        count: 1,
-        onTap: () => const WLPlanRoute().push(context),
-      ),
-      NoticeItem(
-        icon: Icons.local_library_rounded,
-        title: "Library – Need to Submit",
-        subtitle: "2 books pending for return",
-        count: 2,
-        onTap: () => const LibRoute().push(context),
-      ),
-      NoticeItem(
-        icon: Icons.notifications_active_rounded,
-        title: "Reminders",
-        subtitle: "Reminders for you",
-        count: ref.watch(remindersProviderCount).maybeWhen(
-          data: (count) => count.length,
-          orElse: () => 0,
-        ),
-        onTap: () => _openReminders(context, ref),
-      ),
-    ];
+    // Re-fetch APIs every time this screen opens
+    useEffect(() {
+      Future.microtask(() {
+        ref.invalidate(dashboardNoticeProvider);
+        ref.invalidate(teacherReminderResponseProvider);
+      });
+      return null;
+    }, const []);
 
     return Scaffold(
       body: Container(
@@ -344,13 +414,13 @@ class NoticeBoardScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFFE91E63),
-              Color(0xFF9C27B0),
+              const Color(0xFFE91E63),
+              const Color(0xFF9C27B0),
               Colors.blue.shade600,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: [0.0, 0.6, 1.0],
+            stops: const [0.0, 0.6, 1.0],
           ),
         ),
         child: Column(
@@ -369,7 +439,7 @@ class NoticeBoardScreen extends ConsumerWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         "Notice Board",
                         style: TextStyle(
                           fontSize: 28,
@@ -378,7 +448,7 @@ class NoticeBoardScreen extends ConsumerWidget {
                           letterSpacing: 0.5,
                         ),
                       ),
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Text(
                         "Stay updated with important notices",
                         style: TextStyle(
@@ -389,12 +459,12 @@ class NoticeBoardScreen extends ConsumerWidget {
                     ],
                   ),
                   Container(
-                    padding: EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.notifications_none_rounded,
                       color: Colors.white,
                       size: 28,
@@ -406,10 +476,10 @@ class NoticeBoardScreen extends ConsumerWidget {
             // Cards List
             Expanded(
               child: Container(
-                margin: EdgeInsets.only(top: 10),
+                margin: const EdgeInsets.only(top: 10),
                 decoration: BoxDecoration(
                   color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.only(
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(30),
                     topRight: Radius.circular(30),
                   ),
@@ -451,7 +521,6 @@ class NoticeBoardScreen extends ConsumerWidget {
                     );
                   },
                 ),
-
               ),
             ),
           ],
@@ -462,9 +531,11 @@ class NoticeBoardScreen extends ConsumerWidget {
 }
 
 class ReminderListSheet extends ConsumerWidget {
+  const ReminderListSheet({super.key});
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(remindersProvider);
+    final remindersAsync = ref.watch(remindersProvider);
 
     return Container(
       padding: EdgeInsets.only(
@@ -473,10 +544,10 @@ class ReminderListSheet extends ConsumerWidget {
         right: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
         color: Colors.grey.shade50,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
         ),
@@ -484,14 +555,13 @@ class ReminderListSheet extends ConsumerWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.2),
             blurRadius: 20,
-            offset: Offset(0, -5),
+            offset: const Offset(0, -5),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Drag indicator
           Center(
             child: Container(
               width: 40,
@@ -502,260 +572,101 @@ class ReminderListSheet extends ConsumerWidget {
               ),
             ),
           ),
-          SizedBox(height: 16),
-          // Header
+
+          const SizedBox(height: 16),
+
           Row(
             children: [
-              // Back Arrow Button
               IconButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                onPressed: () => Navigator.of(context).pop(),
                 icon: Icon(
                   Icons.arrow_back_rounded,
                   color: Colors.grey.shade800,
                   size: 28,
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
               ),
+
               const SizedBox(width: 8),
+
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Reminders",
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.blue.shade100,
-                            Colors.blue.shade200,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        "Tap to mark as read",
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.blue.shade800,
-                        ),
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  "Notifications",
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.grey.shade800,
+                  ),
                 ),
               ),
             ],
           ),
 
-          SizedBox(height: 8),
-          Text(
-            "Unread reminders will appear in gray",
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
-          ),
-          SizedBox(height: 30),
+          const SizedBox(height: 8),
+
           Expanded(
-            child: async.when(
-              loading: () => Center(
-                child: CircularProgressIndicator(
-                  color: Colors.blue.shade700,
-                ),
-              ),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      color: Colors.red.shade400,
-                      size: 48,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      "Error loading reminders",
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              data: (list) {
-                if (list.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.check_circle_outline_rounded,
-                          color: Colors.green.shade400,
-                          size: 64,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          "All caught up!",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          "No new reminders",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+            child: RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(teacherReminderResponseProvider);
 
-                return ListView.builder(
-                  itemCount: list.length,
-                  itemBuilder: (_, index) {
-                    final r = list[index];
-                    final isUnread = r.readStatus == 0;
-                    String cleanedDescription = TextSanitizer.cleanText(r.description);
-
-                    return Container(
-                      margin: EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: isUnread
-                            ? Colors.grey.shade300 // Gray for unread
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: isUnread
-                            ? []
-                            : [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: isUnread
-                              ? Colors.grey.shade400
-                              : Colors.grey.shade200,
-                          width: 1,
-                        ),
-                      ),
-                      child: ListTile(
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        leading: Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isUnread
-                                ? Colors.grey.shade400
-                                : Colors.blue.shade100,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isUnread
-                                ? Icons.mark_email_unread_rounded
-                                : Icons.mark_email_read_rounded,
-                            color: isUnread
-                                ? Colors.grey.shade700
-                                : Colors.blue.shade700,
-                          ),
-                        ),
-                        title: Text(
-                          r.subject,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: isUnread
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade700,
-                          ),
-                        ),
-                        subtitle: Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Text(
-                            cleanedDescription,
-                            style: TextStyle(
-                              color: isUnread
-                                  ? Colors.grey.shade600
-                                  : Colors.grey.shade500,
-                            ),
-                          ),
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            if (isUnread)
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade100,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  "NEW",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.red.shade700,
-                                  ),
-                                ),
-                              ),
-                            SizedBox(height: 4),
-                            Text(
-                              r.remarkDate,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
-                        onTap: () async {
-                          if (isUnread) {
-                            final api = ref.read(staffApiProvider);
-                            await api.markReminderRead(r.id);
-                            ref.refresh(remindersProvider);
-                            ref.refresh(remindersProviderCount);
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Marked as read"),
-                                backgroundColor: Colors.green.shade600,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    );
-                  },
+                await ref.read(
+                  teacherReminderResponseProvider.future,
                 );
               },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  remindersAsync.when(
+                    loading: () => const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+
+                    error: (error, stack) =>
+                        SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Text(
+                              "Error loading notifications",
+                            ),
+                          ),
+                        ),
+
+                    data: (list) {
+                      if (list.isEmpty) {
+                        return const SliverFillRemaining(
+                          hasScrollBody: false,
+                          child: Center(
+                            child: Text(
+                              "No unread notifications",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                            final reminder = list[index];
+
+                            return _buildPrincipalRemarkCard(
+                              context,
+                              ref,
+                              reminder,
+                            );
+                          },
+                          childCount: list.length,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -763,3 +674,489 @@ class ReminderListSheet extends ConsumerWidget {
     );
   }
 }
+
+
+
+  // ============================================================
+  // PRINCIPAL REMARK CARD
+  // ============================================================
+
+  Widget _buildPrincipalRemarkCard(
+      BuildContext context,
+      WidgetRef ref,
+      TeacherReminder r,
+      ) {
+    final isUnread = r.readStatus == 0;
+
+    final cleanedDescription =
+    TextSanitizer.cleanText(r.description);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isUnread
+            ? Colors.grey.shade300
+            : Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: isUnread
+            ? []
+            : [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(
+          color: isUnread
+              ? Colors.grey.shade400
+              : Colors.grey.shade200,
+          width: 1,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 1,
+        ),
+
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: isUnread
+                ? Colors.grey.shade400
+                : Colors.blue.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            isUnread
+                ? Icons.mark_email_unread_rounded
+                : Icons.mark_email_read_rounded,
+            color: isUnread
+                ? Colors.grey.shade700
+                : Colors.blue.shade700,
+          ),
+        ),
+
+        title: Text(
+          r.subject,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: isUnread
+                ? Colors.grey.shade800
+                : Colors.grey.shade700,
+          ),
+        ),
+
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            cleanedDescription,
+            style: TextStyle(
+              color: isUnread
+                  ? Colors.grey.shade600
+                  : Colors.grey.shade500,
+            ),
+          ),
+        ),
+
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+
+            if (isUnread)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  "NEW",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 4),
+
+            Text(
+              r.remarkDate,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ],
+        ),
+
+        onTap: () async {
+          if (!isUnread) return;
+
+          try {
+            final api = ref.read(staffApiProvider);
+
+            await api.markReminderRead(r.id);
+
+            // Refresh the main API response
+            ref.invalidate(
+              teacherReminderResponseProvider,
+            );
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  "Marked as read",
+                ),
+                backgroundColor: Colors.green.shade600,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Unable to mark reminder as read",
+                ),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  // ============================================================
+  // DATE FORMAT
+  // 2026-07-23 -> 23 Jul 2026
+  // ============================================================
+
+  String _formatAttendanceDate(String date) {
+    try {
+      final parsed = DateTime.parse(date);
+
+      const months = [
+        "",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      return "${parsed.day} ${months[parsed.month]} ${parsed.year}";
+    } catch (_) {
+      return date;
+    }
+  }
+
+class AttendanceListSheet extends ConsumerWidget {
+  const AttendanceListSheet({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final attendanceAsync =
+    ref.watch(attendanceReminderProvider);
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      padding: const EdgeInsets.all(20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(30),
+        ),
+      ),
+      child: attendanceAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(),
+        ),
+
+        error: (error, stack) => Center(
+          child: Text(
+            "Error loading attendance",
+          ),
+        ),
+
+        data: (attendance) {
+          if (attendance == null ||
+              !attendance.isClassTeacher ||
+              attendance.pendingAttendance.isEmpty) {
+            return const Center(
+              child: Text(
+                "No missed attendance",
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () =>
+                        Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  const Expanded(
+                    child: Text(
+                      "Missed Attendance",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+
+                  Text(
+                    "${attendance.pendingAttendance.length}",
+                    style: const TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 15),
+
+              Text(
+                "Class ${attendance.className}-${attendance.sectionName}",
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              Expanded(
+                child: ListView.separated(
+                  itemCount:
+                  attendance.pendingAttendance.length,
+                  separatorBuilder: (_, __) =>
+                  const Divider(),
+
+                  itemBuilder: (context, index) {
+                    final item =
+                    attendance.pendingAttendance[index];
+
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.calendar_today,
+                        color: Colors.orange,
+                      ),
+                      title: Text(item.day),
+                      subtitle: Text(
+                        _formatAttendanceDate(item.date),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius:
+                          BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          "MISSED",
+                          style: TextStyle(
+                            color: Colors.red.shade700,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  String _formatAttendanceDate(String date) {
+    try {
+      final parsed = DateTime.parse(date);
+
+      const months = [
+        "",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+
+      return "${parsed.day} "
+          "${months[parsed.month]} "
+          "${parsed.year}";
+    } catch (_) {
+      return date;
+    }
+  }
+}
+
+  // ============================================================
+  // ATTENDANCE DATE CARD
+  // ============================================================
+
+  Widget _buildCompactAttendanceRow(
+      PendingAttendance item, {
+        bool showDivider = true,
+      }) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          child: Row(
+            children: [
+
+              // Small date icon
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 20,
+                color: Colors.orange.shade700,
+              ),
+
+              const SizedBox(width: 9),
+
+              // Day
+              SizedBox(
+                width: 78,
+                child: Text(
+                  item.day,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+              ),
+
+              // Date
+              Expanded(
+                child: Text(
+                  _formatAttendanceDate(item.date),
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ),
+
+              // Missed badge
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  "MISSED",
+                  style: TextStyle(
+                    color: Colors.red.shade700,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (showDivider)
+          Divider(
+            height: 1,
+            thickness: 0.6,
+            indent: 36,
+            color: Colors.grey.shade200,
+          ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // PRINCIPAL REMARK CARD
+  // ============================================================
+
+class MissedAttendanceCard extends ConsumerWidget {
+  final VoidCallback? onTap;
+
+  const MissedAttendanceCard({super.key, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final attendanceAsync = ref.watch(attendanceReminderProvider);
+
+    return attendanceAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (attendance) {
+        if (attendance == null ||
+            !attendance.isClassTeacher ||
+            attendance.pendingAttendance.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final count = attendance.pendingAttendance.length;
+
+        return NoticeCard(
+          item: NoticeItem(
+            icon: Icons.notifications_active_rounded,
+            title: "Pending Attendance",
+            subtitle: "$count attendance entries pending",
+            count: count,
+            onTap: onTap ?? () => _Attendance(context, ref),
+          ),
+        );
+      },
+    );
+  }
+}
+

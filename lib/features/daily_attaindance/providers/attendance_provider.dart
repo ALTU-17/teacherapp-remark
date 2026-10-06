@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:teacherapp/providers/api_client_provider.dart';
+
+import '../../../config/utils.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/providers/academic_year_provider.dart';
 import '../../leave_application/models/auth_data.dart';
@@ -12,260 +14,579 @@ part 'attendance_provider.g.dart';
 class AttendanceP extends _$AttendanceP {
   late AttendanceService _attendanceService;
 
+  // ============================================================
+  // BUILD
+  // ============================================================
+
   @override
   Future<AttendanceState> build(StudentBody param) async {
     final authData = _getAuthData();
-    if (!authData.isValid) return AttendanceState();
 
-    final api = await ref.read(apiClientProvider.future);
+    if (!authData.isValid) {
+      return AttendanceState();
+    }
 
-    _attendanceService = AttendanceService(api, authData.url);
-    final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
+    final api = await ref.read(
+      apiClientProvider.future,
+    );
+
+    _attendanceService = AttendanceService(
+      api,
+      authData.url,
+    );
+
+    final acdYear =
+        ref.read(academicYearProvider)
+            .requireValue
+            .selectedYear;
+
     final data = param.copyWith(
       shortName: authData.shortName,
       academicYr: acdYear,
     );
 
-    final students = await _attendanceService.getStudents(data);
-    return AttendanceState(students: students);
+    // ----------------------------------------------------------
+    // 1. Get ALL students
+    // ----------------------------------------------------------
+
+    final students =
+    await _attendanceService.getStudents(data);
+
+    // ----------------------------------------------------------
+    // 2. Get attendance for THIS class + section + date
+    // ----------------------------------------------------------
+
+    final attendance =
+    await _attendanceService.getAttendanceByDate(
+      classId: data.classID ?? '',
+      sectionId: data.sectionID ?? '',
+      onlyDate: data.onlyDate ?? '',
+    );
+
+    // ----------------------------------------------------------
+    // 3. Create attendance map
+    // ----------------------------------------------------------
+
+    final attendanceMap = <String, Students>{};
+
+    for (final record in attendance) {
+      final studentId = record.studentId?.toString();
+
+      if (studentId != null && studentId.isNotEmpty) {
+        attendanceMap[studentId] = record;
+      }
+    }
+
+    // ----------------------------------------------------------
+    // 4. Detect whether this date is already marked
+    // ----------------------------------------------------------
+
+    final bool isAttendanceMarked =
+        attendance.isNotEmpty;
+
+    // ----------------------------------------------------------
+    // 5. Merge
+    // ----------------------------------------------------------
+
+    final mergedStudents = students.map((student) {
+      final studentId = student.studentId?.toString();
+
+      final attendanceRecord =
+      studentId == null
+          ? null
+          : attendanceMap[studentId];
+
+      // Student has NO attendance record for this date.
+      // Therefore Select must be OFF and Absent must be OFF/disabled.
+      if (attendanceRecord == null) {
+        return student.copyWith(
+          attendanceId: null,
+          attendanceStatus: "0",
+          markAttendance: "1",
+        );
+      }
+
+      // Student HAS an attendance record.
+      // Select ON and Absent follows saved attendance.
+      return student.copyWith(
+        attendanceId: attendanceRecord.attendanceId,
+        attendanceStatus:
+        attendanceRecord.attendanceStatus ?? "0",
+        markAttendance: "1",
+      );
+    }).toList();
+
+    return AttendanceState(
+      students: mergedStudents,
+    );
   }
 
-  // toggleStudentSelection(Students student) {
-  //   final selectedStudents =
-  //   List<Students>.from(state.requireValue.selectedStudents);
-  //   if (selectedStudents.contains(student)) {
-  //     selectedStudents.remove(student);
-  //   } else {
-  //     selectedStudents.add(student);
-  //   }
-  //   state = AsyncData(
-  //       state.requireValue.copyWith(selectedStudents: selectedStudents));
-  // }
+  // ============================================================
+  // STUDENT SELECTION
+  // ============================================================
 
   void toggleStudentSelection(Students updatedStudent) {
     state = state.whenData((data) {
-      final updatedList = data.students.map((s) {
-        return s.studentId == updatedStudent.studentId ? updatedStudent : s;
+      final updatedList = data.students.map((student) {
+        return student.studentId == updatedStudent.studentId
+            ? updatedStudent
+            : student;
       }).toList();
 
-      return data.copyWith(students: updatedList);
+      return data.copyWith(
+        students: updatedList,
+      );
     });
   }
-
 
   bool isStudentSelected(Students student) {
     return state.requireValue.selectedStudents.contains(student);
   }
 
-  Future updateAttendance(StudentBody body) async {
+  // ============================================================
+  // UPDATE ATTENDANCE
+  // ============================================================
+
+  Future<bool> updateAttendance(
+      StudentBody body,
+      ) async {
     final authData = _getAuthData();
-    if (!authData.isValid) return false;
+
+    if (!authData.isValid) {
+      return false;
+    }
 
     final currentState = state.requireValue;
-    final selectedStudents = currentState.selectedStudents;
-    final allStudents = currentState.students;
 
-    final absentStudents = state.value!.students
-        .where((s) => s.attendanceStatus == "1")
-        .toList();
+    final students = currentState.students;
 
-
-    state = AsyncLoading();
+    state = const AsyncLoading();
 
     try {
-      // Prepare students data based on selection
-      final studentsToUpdate = _prepareStudentsForUpdate(allStudents, absentStudents);
-
-      // Create attendance data and make API call
       final success = await _updateAttendanceData(
         body: body,
-        students: studentsToUpdate,
+        students: students,
         authData: authData,
       );
 
       if (success) {
-        state = AsyncData(AttendanceState(
-          students: studentsToUpdate,
-          selectedStudents: [],
-        ));
+        // Laravel is the source of truth.
+        // Reload students + date attendance.
         ref.invalidateSelf();
+
         return true;
-      } else {
-        state = AsyncData(currentState);
-        return false;
       }
+
+      state = AsyncData(currentState);
+
+      return false;
     } catch (e) {
       state = AsyncData(currentState);
+
+      Utils.debLog(
+        'Update attendance error => $e',
+      );
+
       return false;
     }
   }
 
-  List<Students> _prepareStudentsForUpdate(List<Students> allStudents, List<Students> selectedStudents) {
-    // If no students are explicitly selected, mark ALL as PRESENT
+  // ============================================================
+  // PREPARE STUDENTS
+  // ============================================================
+
+  List<Students> _prepareStudentsForUpdate(
+      List<Students> allStudents,
+      List<Students> selectedStudents,
+      ) {
+    /*
+     * If no students are explicitly absent,
+     * mark ALL students as PRESENT.
+     */
     if (selectedStudents.isEmpty) {
-      return allStudents.map((student) => student.copyWith(
-        attendanceStatus: "0", // 0 = Present
-        markAttendance: "1",   // 1 = Marked for attendance
-      )).toList();
+      return allStudents
+          .map(
+            (student) => student.copyWith(
+          attendanceStatus: "0",
+          markAttendance: "1",
+        ),
+      )
+          .toList();
     }
 
-    // If students are selected, update only the selected ones
-    final selectedStudentIds = selectedStudents.map((s) => s.studentId).toSet();
+    /*
+     * Get IDs of students currently marked absent.
+     */
+    final selectedStudentIds = selectedStudents
+        .map((student) => student.studentId)
+        .toSet();
 
+    /*
+     * Rebuild the complete student list.
+     */
     return allStudents.map((student) {
       if (selectedStudentIds.contains(student.studentId)) {
-        // This student was explicitly selected - use their current status
-        final selectedStudent = selectedStudents.firstWhere((s) => s.studentId == student.studentId);
-        return student.copyWith(
-          attendanceStatus: selectedStudent.attendanceStatus,
-          markAttendance: selectedStudent.markAttendance,
+        /*
+         * Student is absent.
+         */
+        final selectedStudent = selectedStudents.firstWhere(
+              (selected) =>
+          selected.studentId == student.studentId,
         );
-      } else {
-        // Student was not selected - mark as present
+
         return student.copyWith(
-          attendanceStatus: "0", // Present
-          markAttendance: "1",   // Marked
+          attendanceStatus:
+          selectedStudent.attendanceStatus,
+          markAttendance:
+          selectedStudent.markAttendance,
         );
       }
+
+      /*
+       * Student is not absent -> PRESENT.
+       */
+      return student.copyWith(
+        attendanceStatus: "0",
+        markAttendance: "1",
+      );
     }).toList();
   }
 
-  Future deleteAttendance() async {
-    final authData = _getAuthData();
-    if (!authData.isValid) return false;
+  // ============================================================
+  // CREATE LARAVEL UPDATE PAYLOAD
+  // ============================================================
 
-    final currentState = state.requireValue;
-    final students = currentState.students;
-
-    state = AsyncLoading();
-
-    final attendanceData = _createAttendanceData(
-      students: students,
-      body: param,
-      authData: authData,
-      // attendanceStatus: "0",
-    );
-
-    final success = await _deleteAttendanceData(
-      body: param,
-      attendanceData: attendanceData,
-      authData: authData,
-    );
-
-    if (success) {
-      state = AsyncData(AttendanceState(
-        students: students,
-        selectedStudents: [],
-      ));
-      ref.invalidateSelf();
-    } else {
-      state = AsyncData(currentState);
-    }
-  }
-
-  // Helper methods for optimization
-  List<Students> _markAllStudentsPresent(List<Students> students) {
-    return students
-        .map((student) => student.copyWith(attendanceStatus: "0"))
-        .toList();
-  }
-
-  List<Students> _mergeSelectedStudents(
-      List<Students> allStudents, List<Students> selectedStudents) {
-    final updatedStudentsMap = {
-      for (var student in selectedStudents) student.studentId: student
-    };
-    return allStudents.map((oldStudent) {
-      return updatedStudentsMap[oldStudent.studentId] ?? oldStudent;
-    }).toList();
-  }
-
-  List<Att> _createAttObjects(List<Students> students, StudentBody body,
-      AuthData authData) {
-    final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
-
-    return students
-        .where((s) => s.markAttendance == "1") // Only include marked students
-        .map((s) => Att(
-      attendanceStatus: s.attendanceStatus ?? "0", // Use student's status
-      fName: s.firstName,
-      lName: s.lastName,
-      rollNo: s.rollNo?.toString(),
-      studentId: s.studentId,
-      classId: body.classID ?? s.classId,
-      sectionId: body.sectionID ?? s.sectionId?.toString(),
-      date: body.onlyDate ?? s.date?.toString(),
-      onlyDate: body.onlyDate ?? s.onlyDate?.toString(),
-      teacherId: authData.regId,
-      academicYr: acdYear,
-    ))
-        .toList()
-        .toSet()
-        .toList();
-  }
-
-  Map<String, dynamic> _createAttendanceData({
+  Map<String, dynamic> _createLaravelAttendanceData({
     required List<Students> students,
     required StudentBody body,
-    required AuthData authData,
   }) {
-    final attObjects = _createAttObjects(students, body, authData);
-    return {"arraylist": attObjects.map((e) => e.toJson()).toList()};
+    final List<String> checkbox = [];
+    final Map<String, dynamic> data = {};
+
+    for (final student in students) {
+      final studentId = student.studentId?.toString();
+
+      if (studentId == null || studentId.isEmpty) {
+        continue;
+      }
+
+      // ----------------------------------------------------------
+      // SELECT STUDENTS CHECKBOX
+      //
+      // Only selected students are included.
+      // ----------------------------------------------------------
+
+      if (student.markAttendance != "1") {
+        continue;
+      }
+
+      checkbox.add(studentId);
+
+      // ----------------------------------------------------------
+      // ABSENT CHECKBOX
+      //
+      // attendanceStatus "1" = ABSENT
+      //
+      // Web portal sends present_<studentId> = "1"
+      // only for absent students.
+      // ----------------------------------------------------------
+
+      if (student.attendanceStatus == "1") {
+        data['present_$studentId'] = "1";
+      }
+    }
+
+    data['countOfStudents'] = checkbox.length.toString();
+    data['class_id'] = body.classID ?? '';
+    data['section_id'] = body.sectionID ?? '';
+    data['dateatt'] = _formatSaveAttendanceDate(
+      body.onlyDate ?? '',
+    );
+    data['checkbox'] = checkbox;
+
+    return data;
   }
+  // ============================================================
+  // FORMAT DATE FOR SAVE API
+  // ============================================================
+
+  String _formatSaveAttendanceDate(String date) {
+    if (date.isEmpty) {
+      return '';
+    }
+
+    final parts = date.split('-');
+
+    if (parts.length != 3) {
+      return date;
+    }
+
+    /*
+     * If current date is:
+     *
+     * 2026-08-24
+     *
+     * convert to:
+     *
+     * 24-08-2026
+     */
+    if (parts[0].length == 4) {
+      return '${parts[2]}-${parts[1]}-${parts[0]}';
+    }
+
+    /*
+     * Already DD-MM-YYYY.
+     */
+    return date;
+  }
+
+  // ============================================================
+  // UPDATE API
+  // ============================================================
 
   Future<bool> _updateAttendanceData({
     required StudentBody body,
     required List<Students> students,
     required AuthData authData,
   }) async {
-    final api = await ref.read(apiClientProvider.future);
-    _attendanceService = AttendanceService(api, authData.url);
-
-    final attendanceData = _createAttendanceData(
-      students: students,
-      body: body,
-      authData: authData,
+    final api = await ref.read(
+      apiClientProvider.future,
     );
 
-    final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
+    _attendanceService = AttendanceService(
+      api,
+      authData.url,
+    );
+
+    /*
+     * Create NEW Laravel payload.
+     *
+     * This is NOT the old:
+     *
+     * {
+     *   "arraylist": [...]
+     * }
+     *
+     * Instead it creates:
+     *
+     * {
+     *   "countOfStudents": "37",
+     *   "class_id": "154",
+     *   "section_id": "587",
+     *   "dateatt": "24-08-2026",
+     *   "checkbox": [...],
+     *   "present_24112": "1",
+     *   "present_24154": "1"
+     * }
+     */
+    final attendanceData =
+    _createLaravelAttendanceData(
+      students: students,
+      body: body,
+    );
+
+    print(
+      'SAVE ATTENDANCE DATA => $attendanceData',
+    );
+
     return await _attendanceService.updateAttendance(
-      academicYr: acdYear,
-      classId: body.classID ?? "",
-      sectionId: body.sectionID ?? "",
-      onlyDate: body.onlyDate ?? "",
+      academicYr: ref
+          .read(academicYearProvider)
+          .requireValue
+          .selectedYear,
+      classId: body.classID ?? '',
+      sectionId: body.sectionID ?? '',
+      onlyDate: body.onlyDate ?? '',
       shortName: authData.shortName,
       teacherId: authData.regId,
       attendanceData: attendanceData,
     );
   }
+
+  // ============================================================
+  // DELETE ATTENDANCE
+  // ============================================================
+
+  Future<bool> deleteAttendance() async {
+    final authData = _getAuthData();
+
+    if (!authData.isValid) {
+      return false;
+    }
+
+    final currentState = state.requireValue;
+
+    final students = currentState.students;
+
+    state = const AsyncLoading();
+
+    try {
+      final success = await _deleteAttendanceData(
+        body: param,
+        authData: authData,
+      );
+
+      if (success) {
+        state = AsyncData(
+          AttendanceState(
+            students: students,
+            selectedStudents: [],
+          ),
+        );
+
+        ref.invalidateSelf();
+
+        return true;
+      }
+
+      state = AsyncData(currentState);
+
+      return false;
+    } catch (e) {
+      state = AsyncData(currentState);
+
+      return false;
+    }
+  }
+
+  // ============================================================
+  // DELETE API
+  // ============================================================
 
   Future<bool> _deleteAttendanceData({
     required StudentBody body,
-    required Map<String, dynamic> attendanceData,
     required AuthData authData,
   }) async {
-    final api = await ref.read(apiClientProvider.future);
-    _attendanceService = AttendanceService(api, authData.url);
+    final api = await ref.read(
+      apiClientProvider.future,
+    );
 
-    final acdYear = ref.read(academicYearProvider).requireValue.selectedYear;
+    _attendanceService = AttendanceService(
+      api,
+      authData.url,
+    );
+
+    /*
+     * Laravel DELETE API only requires:
+     *
+     * class_id
+     * section_id
+     * only_date
+     *
+     * No attendanceData is required anymore.
+     */
     return await _attendanceService.deleteAttendance(
-      academicYr: acdYear,
-      classId: body.classID ?? "",
-      sectionId: body.sectionID ?? "",
-      onlyDate: body.onlyDate ?? "",
+      academicYr: ref
+          .read(academicYearProvider)
+          .requireValue
+          .selectedYear,
+      classId: body.classID ?? '',
+      sectionId: body.sectionID ?? '',
+      onlyDate: _formatDeleteAttendanceDate(
+        body.onlyDate ?? '',
+      ),
       shortName: authData.shortName,
       teacherId: authData.regId,
-      attendanceData: attendanceData,
+      attendanceData: {},
     );
   }
 
+  Future<bool> deleteStudentAttendance(
+      String attendanceId,
+      ) async {
+    final authData = _getAuthData();
+
+    if (!authData.isValid) {
+      return false;
+    }
+
+    try {
+      final api = await ref.read(
+        apiClientProvider.future,
+      );
+
+      _attendanceService = AttendanceService(
+        api,
+        authData.url,
+      );
+
+      final success =
+      await _attendanceService.deleteStudentAttendance(
+        attendanceId: attendanceId,
+      );
+
+      if (success) {
+        /*
+       * Refresh GET API so the row immediately reflects
+       * the deleted attendance.
+       */
+        ref.invalidateSelf();
+
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      Utils.debLog(
+        'DELETE STUDENT ATTENDANCE ERROR => $e',
+      );
+
+      return false;
+    }
+  }
+
+  // ============================================================
+  // FORMAT DATE FOR DELETE API
+  // ============================================================
+
+  String _formatDeleteAttendanceDate(String date) {
+    if (date.isEmpty) {
+      return '';
+    }
+
+    final parts = date.split('-');
+
+    if (parts.length != 3) {
+      return date;
+    }
+
+    /*
+     * DELETE API expects:
+     *
+     * 2026-08-24
+     *
+     * So if date is already YYYY-MM-DD,
+     * return it unchanged.
+     */
+    if (parts[0].length == 4) {
+      return date;
+    }
+
+    /*
+     * If somehow date is DD-MM-YYYY,
+     * convert it to YYYY-MM-DD.
+     */
+    return '${parts[2]}-${parts[1]}-${parts[0]}';
+  }
+
+  // ============================================================
+  // AUTH DATA
+  // ============================================================
+
   AuthData _getAuthData() {
-    final auth = ref.read(authProvider).requireValue;
+    final auth = ref.read(
+      authProvider,
+    ).requireValue;
+
     return AuthData(
-      shortName: auth.teacherVerification?.shortName ?? '',
-      url: auth.teacherVerification?.teacherapkUrl ?? '',
-      regId: auth.regId ?? '',
-      academicYr: auth.academicYr ?? '',
+      shortName:
+      auth.teacherVerification?.shortName ?? '',
+      url:
+      auth.teacherVerification?.teacherapkUrl ?? '',
+      regId:
+      auth.regId ?? '',
+      academicYr:
+      auth.academicYr ?? '',
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter/services.dart';
 
 import 'Chapters/ChaptersPage.dart';
+import 'LPTemplate/lesson_plan_template_page.dart';
 import 'LessonPlanHeading/LessonPlanHeadingPage.dart';
 import 'Providers/curriculum_role_provider.dart';
 import 'LessonPlan/view/LessonPlanPage.dart';
@@ -338,6 +339,7 @@ class CurriculumPage extends HookConsumerWidget {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const LessonPlanPage(),
+                    // builder: (_) => const WBLessonPlanPage(),
                   ),
                 );
                 break;

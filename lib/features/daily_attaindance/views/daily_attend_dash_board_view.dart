@@ -253,10 +253,15 @@ class StudentList extends HookConsumerWidget {
             return rollA.compareTo(rollB);
           });
 
-
+        final bool isAttendanceMarked =
+        sortedStudents.any(
+              (student) =>
+          student.attendanceId != null &&
+              student.attendanceId!.isNotEmpty,
+        );
         return Column(
           children: [
-            if (sortedStudents.first.deleteBtn == '1')
+            if (isAttendanceMarked)
               Text(
                 "Already marked for this date",
                 style: TextStyle(
@@ -282,12 +287,12 @@ class StudentList extends HookConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(left: 10,right: 10),
               child: Container(
-                padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 8.w),
+                padding: EdgeInsets.symmetric(vertical: 8.h, horizontal: 1.w),
                 color: const Color.fromARGB(255, 233, 219, 236),
                 child: Row(
                   children: const [
                     Expanded(
-                      flex: 1,
+
                       child: Center(
                         child: Text(
                           "Select",
@@ -296,7 +301,7 @@ class StudentList extends HookConsumerWidget {
                       ),
                     ),
                     Expanded(
-                      flex: 1,
+
                       child: Center(
                         child: Text(
                           "Roll No",
@@ -305,7 +310,7 @@ class StudentList extends HookConsumerWidget {
                       ),
                     ),
                     Expanded(
-                      flex: 2,
+                      flex: 3,
                       child: Center(
                         child: Text(
                           "Name",
@@ -316,11 +321,21 @@ class StudentList extends HookConsumerWidget {
                       ),
                     ),
                     Expanded(
-                      flex: 2,
+                      // flex: 1,
                       child: Center(
                         child: Text(
-                          "     Absent",
+                          "Absent",
                           style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      // flex: 1,
+                      child: Center(
+                        child:Icon(
+                          Icons.delete,
+                          color: Colors.red,
+                          size: 22,
                         ),
                       ),
                     ),
@@ -372,7 +387,7 @@ class StudentList extends HookConsumerWidget {
                     ),
                   ),
                   SizedBox(width: 10.w),
-                  if (sortedStudents.first.deleteBtn == '1')
+                  if (isAttendanceMarked)
                     Expanded(
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
@@ -408,76 +423,307 @@ class StudentList extends HookConsumerWidget {
 class StudentTile extends HookConsumerWidget {
   final StudentBody studentBody;
   final Students student;
-  const StudentTile(
-      {super.key, required this.studentBody, required this.student});
+
+  const StudentTile({
+    super.key,
+    required this.studentBody,
+    required this.student,
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final attendanceStatus = useState(student.attendanceStatus == '1');
-    final markAttendance = useState(student.markAttendance == '1');
-    final studentsP = ref.read(attendancePProvider(studentBody).notifier);
+  Widget build(
+      BuildContext context,
+      WidgetRef ref,
+      ) {
+    final isSelected = useState(
+      student.markAttendance == "1",
+    );
 
-    void updateStudentSelection(bool? v, bool isAbsentCheckbox) {
-      if (isAbsentCheckbox) {
-        attendanceStatus.value = v ?? false;
-        // When marking absent, automatically mark for attendance
-        final s = student.copyWith(
-          attendanceStatus: attendanceStatus.value ? "1" : "0",
-          markAttendance: "1", // Always mark for attendance when changing status
-        );
-        studentsP.toggleStudentSelection(s);
-      } else {
-        markAttendance.value = v ?? false;
-        final s = student.copyWith(
-          markAttendance: markAttendance.value ? "1" : "0",
-          // If unmarking attendance, also set as present
-          attendanceStatus: markAttendance.value ? (attendanceStatus.value ? "1" : "0") : "0",
-        );
-        studentsP.toggleStudentSelection(s);
+    final isAbsent = useState(
+      student.attendanceStatus == "1",
+    );
+
+    final studentsP = ref.read(
+      attendancePProvider(studentBody).notifier,
+    );
+
+    // ==========================================================
+    // SELECT / UNSELECT STUDENT
+    // ==========================================================
+
+    void updateStudentSelection(bool? value) {
+      final selected = value ?? false;
+
+      isSelected.value = selected;
+
+      final updatedStudent = student.copyWith(
+        markAttendance: selected ? "1" : "0",
+
+        // When deselected:
+        // reset absent to present/off.
+        attendanceStatus:
+        selected
+            ? (isAbsent.value ? "1" : "0")
+            : "0",
+
+        // Once deselected this is no longer an
+        // existing attendance record in the current edit.
+        attendanceId:
+        selected
+            ? student.attendanceId
+            : null,
+      );
+
+      if (!selected) {
+        isAbsent.value = false;
       }
+
+      studentsP.toggleStudentSelection(
+        updatedStudent,
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(left: 8,right: 8),
-      child: Card(
-        child: ListTile(
-          leading: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Checkbox(
-                value: markAttendance.value,
-                onChanged: (v) => updateStudentSelection(v, false),
+    // ==========================================================
+    // ABSENT
+    // ==========================================================
+
+    void updateAbsentSelection(bool? value) {
+      // Safety check
+      if (!isSelected.value) {
+        return;
+      }
+
+      final absent = value ?? false;
+
+      isAbsent.value = absent;
+
+      final updatedStudent = student.copyWith(
+        attendanceStatus:
+        absent ? "1" : "0",
+        markAttendance: "1",
+      );
+
+      studentsP.toggleStudentSelection(
+        updatedStudent,
+      );
+    }
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: 8.w,
+        vertical: 2.h,
+      ),
+      height: 52.h,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: const Color(0xFFE0E0E0),
+        ),
+        borderRadius: BorderRadius.circular(4.r),
+      ),
+      child: Row(
+        children: [
+          // ====================================================
+          // SELECT
+          // ====================================================
+
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: Checkbox(
+                value: isSelected.value,
+                onChanged: updateStudentSelection,
               ),
-              CircleAvatar(
-                child: student.rollNo != null
-                    ? Text((student.rollNo).toString(),style: TextStyle(fontSize: 13))
-                    : const SizedBox.shrink(),
-              ),
-            ],
+            ),
           ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "${student.firstName} ${student.lastName}",
+
+          // ====================================================
+          // ROLL NO
+          // ====================================================
+
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: Text(
+                student.rollNo?.toString() ?? "-",
+                textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: attendanceStatus.value ? Colors.red : Colors.black,fontSize: 13
+                  fontSize: 13.sp,
                 ),
               ),
-              student.isActive == "N"
-                  ? const Text(
-                "(Inactive)",
-                style: TextStyle(color: Colors.red),
+            ),
+          ),
+
+          // ====================================================
+          // NAME
+          // ====================================================
+
+          Expanded(
+            flex: 3,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: 8.w,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  "${student.firstName ?? ''} "
+                      "${student.lastName ?? ''}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isAbsent.value
+                        ? Colors.red
+                        : Colors.black,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ====================================================
+          // ABSENT
+          // ====================================================
+
+          Expanded(
+            flex: 1,
+            child: Center(
+              child: Checkbox(
+                value: isSelected.value
+                    ? isAbsent.value
+                    : false,
+
+                // DISABLED until Select is checked.
+                onChanged: isSelected.value
+                    ? updateAbsentSelection
+                    : null,
+              ),
+            ),
+          ),
+
+          // ====================================================
+          // DELETE
+          // ====================================================
+
+          Expanded(
+            flex: 1,
+            child: Center(
+              child:
+              student.attendanceId != null &&
+                  student.attendanceId!.isNotEmpty
+                  ? IconButton(
+                padding: EdgeInsets.zero,
+                constraints:
+                const BoxConstraints(),
+                icon: Icon(
+                  Icons.delete,
+                  color: Colors.red,
+                  size: 22.sp,
+                ),
+                onPressed: () =>
+                    _confirmDeleteStudentAttendance(
+                      context,
+                      ref,
+                      student,
+                    ),
               )
-                  : const SizedBox.shrink()
-            ],
+                  : const SizedBox.shrink(),
+            ),
           ),
-          trailing: Checkbox(
-            value: attendanceStatus.value,
-            onChanged: (v) => updateStudentSelection(v, true),
-          ),
-        ),
+        ],
       ),
+    );
+  }
+
+  Future<void> _confirmDeleteStudentAttendance(
+      BuildContext context,
+      WidgetRef ref,
+      Students student,
+      ) async {
+    final attendanceId =
+        student.attendanceId;
+
+    if (attendanceId == null ||
+        attendanceId.isEmpty) {
+      Utils.toast(
+        "Attendance ID not found",
+        false,
+      );
+      return;
+    }
+
+    final confirmed =
+    await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text(
+            "Confirm Delete",
+          ),
+          content: Text(
+            "Are you sure you want to delete "
+                "attendance for "
+                "${student.firstName ?? ''} "
+                "${student.lastName ?? ''}?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(
+                    ctx,
+                    false,
+                  ),
+              child: const Text(
+                "Cancel",
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () =>
+                  Navigator.pop(
+                    ctx,
+                    true,
+                  ),
+              child: const Text(
+                "Delete",
+                style: TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    final provider = ref.read(
+      attendancePProvider(
+        studentBody,
+      ).notifier,
+    );
+
+    final success =
+    await provider.deleteStudentAttendance(
+      attendanceId,
+    );
+
+    if (!context.mounted) {
+      return;
+    }
+
+    Utils.toast(
+      success
+          ? "Attendance deleted successfully"
+          : "Failed to delete attendance",
+      success,
     );
   }
 }

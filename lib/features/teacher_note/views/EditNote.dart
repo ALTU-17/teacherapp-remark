@@ -52,18 +52,21 @@ class EditTeacherNoteView extends HookConsumerWidget {
     final isDownloading = useState<bool>(false);
     final loadingAttachments = useState<bool>(false);
     final refreshTrigger = useState<int>(0);
-    final _descriptionController = useTextEditingController(text: note.description);
+    final _descriptionController = useTextEditingController(
+        text: note.description);
     final teacherNoteService = ref.read(editTeacherNoteServiceProvider);
-    final auth = ref.read(authProvider).requireValue;
+    final auth = ref
+        .read(authProvider)
+        .requireValue;
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     final newlyUploadedAttachments = useState<List<NoteAttachment>>([]);
     // Initialize notifications
     useEffect(() {
       Future.microtask(() async {
         const AndroidInitializationSettings initializationSettingsAndroid =
-            AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('@mipmap/ic_launcher');
         const InitializationSettings initializationSettings =
-            InitializationSettings(android: initializationSettingsAndroid);
+        InitializationSettings(android: initializationSettingsAndroid);
         await flutterLocalNotificationsPlugin
             .initialize(initializationSettings);
       });
@@ -117,15 +120,14 @@ class EditTeacherNoteView extends HookConsumerWidget {
     }, []);
 
     // Download functions
-    Future<void> _downloadFileAndroid(
-        String url,
+    Future<void> _downloadFileAndroid(String url,
         BuildContext context,
         String name,
         FlutterLocalNotificationsPlugin notificationsPlugin) async {
       isDownloading.value = true;
 
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
-          AndroidNotificationDetails(
+      AndroidNotificationDetails(
         'download_channel',
         'Download Channel',
         channelDescription: 'Notifications for file downloads',
@@ -136,9 +138,10 @@ class EditTeacherNoteView extends HookConsumerWidget {
       );
 
       const NotificationDetails platformChannelSpecifics =
-          NotificationDetails(android: androidPlatformChannelSpecifics);
+      NotificationDetails(android: androidPlatformChannelSpecifics);
 
-      var directory = Directory("/storage/emulated/0/Download/TeacherApp/TeacherNote");
+      var directory = Directory(
+          "/storage/emulated/0/Download/TeacherApp/TeacherNote");
       if (!await directory.exists()) {
         await directory.create(recursive: true);
       }
@@ -166,7 +169,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
             payload: path,
           );
 
-          _showSnackBar(context, 'File downloaded successfully in Download/TeacherApp/TeacherNote');
+          _showSnackBar(context,
+              'File downloaded successfully in Download/TeacherApp/TeacherNote');
         } else {
           _showSnackBar(context, 'Failed to download file: ${res.statusCode}');
         }
@@ -177,7 +181,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
       }
     }
 
-    Future<void> _downloadFileIOS(String url, String fileName, FlutterLocalNotificationsPlugin notificationsPlugin) async {
+    Future<void> _downloadFileIOS(String url, String fileName,
+        FlutterLocalNotificationsPlugin notificationsPlugin) async {
       isDownloading.value = true;
 
       const AndroidNotificationDetails androidPlatformChannelSpecifics =
@@ -211,7 +216,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
             payload: filePath,
           );
 
-          _showSnackBar(context, 'Find it in the Files/On My iPhone/Teacher App/TeachrNote.');
+          _showSnackBar(context,
+              'Find it in the Files/On My iPhone/Teacher App/TeachrNote.');
         } else {
           await notificationsPlugin.show(
             0,
@@ -219,7 +225,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
             'Failed to download file: ${response.statusCode}',
             platformChannelSpecifics,
           );
-          _showSnackBar(context, 'Failed to download file: ${response.statusCode}');
+          _showSnackBar(
+              context, 'Failed to download file: ${response.statusCode}');
         }
       } catch (e) {
         await notificationsPlugin.show(
@@ -235,13 +242,12 @@ class EditTeacherNoteView extends HookConsumerWidget {
     }
 
     Future<void> _handleDownload(NoteAttachment attachment) async {
-
       try {
         if (attachment.fileSize == "0") {
           _showSnackBar(context, 'File not uploaded properly');
         } else {
-
-          String originalUrl = attachment.url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
+          String originalUrl = attachment
+              .url; // e.g., "https://sms.arnoldcentralschool.org/SACSv4test/uploads/remark/03-09-2025"
           String reformattedDateStr;
           String baseDownloadUrl = originalUrl;
 
@@ -255,12 +261,14 @@ class EditTeacherNoteView extends HookConsumerWidget {
               DateFormat inputFormat = DateFormat('dd-MM-yyyy');
               DateTime parsedDate = inputFormat.parse(extractedDate);
               DateFormat outputFormat = DateFormat('yyyy-MM-dd');
-              reformattedDateStr = outputFormat.format(parsedDate); // e.g., "2025-09-03"
+              reformattedDateStr =
+                  outputFormat.format(parsedDate); // e.g., "2025-09-03"
               print('Original Date from URL: $extractedDate');
               print('Reformatted Date: $reformattedDateStr');
-              baseDownloadUrl = originalUrl.replaceFirst(extractedDate, reformattedDateStr);
-              print('Potentially modified base URL for download: $baseDownloadUrl');
-
+              baseDownloadUrl =
+                  originalUrl.replaceFirst(extractedDate, reformattedDateStr);
+              print(
+                  'Potentially modified base URL for download: $baseDownloadUrl');
             } catch (e) {
               print('Error parsing or formatting date from URL: $e');
               reformattedDateStr = "N/A"; // Or handle as an error
@@ -273,9 +281,12 @@ class EditTeacherNoteView extends HookConsumerWidget {
           print('Download URL: $downloadUrl');
 
           if (Platform.isAndroid) {
-            await _downloadFileAndroid(downloadUrl, context, attachment.imageName, flutterLocalNotificationsPlugin);
+            await _downloadFileAndroid(
+                downloadUrl, context, attachment.imageName,
+                flutterLocalNotificationsPlugin);
           } else if (Platform.isIOS) {
-            await _downloadFileIOS(downloadUrl, attachment.imageName, flutterLocalNotificationsPlugin);
+            await _downloadFileIOS(downloadUrl, attachment.imageName,
+                flutterLocalNotificationsPlugin);
           } else {
             _showSnackBar(context, 'Unsupported platform');
           }
@@ -321,11 +332,13 @@ class EditTeacherNoteView extends HookConsumerWidget {
             if (file.bytes == null) continue;
 
             try {
-              final uploaded = await teacherNoteService.uploadTeacherNoteDocument(
+              final uploaded = await teacherNoteService
+                  .uploadTeacherNoteDocument(
                 random_no: note.notesId ?? '',
                 shortName: auth.teacherVerification?.shortName ?? '',
                 fileBytes: file.bytes!,
-                uploadDate: formatDateForApi(note.date ?? DateFormat('yyyy-MM-dd').format(DateTime.now())),
+                uploadDate: formatDateForApi(note.date ??
+                    DateFormat('yyyy-MM-dd').format(DateTime.now())),
                 filename: file.name,
               );
 
@@ -361,7 +374,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
               ...uploadedThisCall
             ];
 
-            _showSnackBar(context, 'Successfully uploaded $successCount file(s)');
+            _showSnackBar(
+                context, 'Successfully uploaded $successCount file(s)');
             refreshTrigger.value++; // Force UI refresh
 
             // Refresh from server to get proper URLs (optional)
@@ -381,26 +395,28 @@ class EditTeacherNoteView extends HookConsumerWidget {
     Future<void> _deleteAttachment(NoteAttachment attachment) async {
       final confirmed = await showDialog<bool>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text("Delete?"),
-          content: Text("Are you sure to delete ${attachment.imageName}?"),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text("Cancel")
+        builder: (ctx) =>
+            AlertDialog(
+              title: const Text("Delete?"),
+              content: Text("Are you sure to delete ${attachment.imageName}?"),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text("Cancel")
+                ),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text("Delete")
+                ),
+              ],
             ),
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text("Delete")
-            ),
-          ],
-        ),
       );
 
       if (confirmed == true) {
         try {
           // Store original for rollback
-          final originalAttachments = List<NoteAttachment>.from(existingAttachments.value);
+          final originalAttachments = List<NoteAttachment>.from(
+              existingAttachments.value);
 
           // Immediate UI update only - NO SERVER CALL
           existingAttachments.value = existingAttachments.value
@@ -408,7 +424,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
               .toList();
 
           // Add to deleted attachments set (will be processed during update)
-          deletedAttachments.value = {...deletedAttachments.value, attachment.imageName};
+          deletedAttachments.value =
+          {...deletedAttachments.value, attachment.imageName};
 
           // Remove from newly uploaded if it was uploaded in this session
           newlyUploadedFileNames.value = newlyUploadedFileNames.value
@@ -419,8 +436,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
               .where((a) => a.imageName != attachment.imageName)
               .toList();
 
-          _showSnackBar(context, 'Attachment marked for deletion. Click Update to save changes.');
-
+          _showSnackBar(context,
+              'Attachment marked for deletion. Click Update to save changes.');
         } catch (e) {
           _showSnackBar(context, 'Error deleting attachment: $e');
         }
@@ -445,13 +462,15 @@ class EditTeacherNoteView extends HookConsumerWidget {
           print('📝 Updating teacher note...');
 
           // Get current server attachments to compare
-          final currentServerAttachments = await teacherNoteService.getTeacherNoteAttachments(
+          final currentServerAttachments = await teacherNoteService
+              .getTeacherNoteAttachments(
             noteId: note.notesId ?? '',
             noteDate: formatDateForApi(note.date ?? ''),
             shortName: auth.teacherVerification?.shortName ?? '',
           );
 
-          final currentServerFilenames = currentServerAttachments.map((a) => a.imageName).toSet();
+          final currentServerFilenames = currentServerAttachments.map((a) =>
+          a.imageName).toSet();
 
           // Files to delete = files marked for deletion + files on server but not in current UI
           final filesToDelete = {
@@ -499,7 +518,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
             newlyUploadedAttachments.value = [];
             deletedAttachments.value = {};
 
-            _showSnackBar(context, res['success_msg'] ?? "✅ Teacher Note Updated Successfully!");
+            _showSnackBar(context,
+                res['success_msg'] ?? "✅ Teacher Note Updated Successfully!");
 
             // Call the callback to refresh parent
             onNoteUpdated?.call();
@@ -509,7 +529,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
               context.pop();
             }
           } else {
-            final errorMsg = res['error_msg'] ?? "❌ Failed to update teacher note";
+            final errorMsg = res['error_msg'] ??
+                "❌ Failed to update teacher note";
             _showSnackBar(context, errorMsg);
             print('❌ Update failed: $errorMsg');
 
@@ -518,7 +539,8 @@ class EditTeacherNoteView extends HookConsumerWidget {
         } catch (e, st) {
           print("❌ Exception in onEdit: $e");
           print("Stack trace: $st");
-          _showSnackBar(context, "Error updating teacher note: ${e.toString()}");
+          _showSnackBar(
+              context, "Error updating teacher note: ${e.toString()}");
         } finally {
           isUploading.value = false;
         }
@@ -625,16 +647,17 @@ class EditTeacherNoteView extends HookConsumerWidget {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2))
-              else if (isUploading.value)
-                const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
               else
-                IconButton(
-                  icon: const Icon(Icons.attach_file, color: Colors.blue),
-                  onPressed: _uploadNewAttachment,
-                ),
+                if (isUploading.value)
+                  const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                else
+                  IconButton(
+                    icon: const Icon(Icons.attach_file, color: Colors.blue),
+                    onPressed: _uploadNewAttachment,
+                  ),
             ],
           ),
 
@@ -643,39 +666,47 @@ class EditTeacherNoteView extends HookConsumerWidget {
               padding: EdgeInsets.only(top: 4),
               child: LinearProgressIndicator(),
             )
-          else if (loadingAttachments.value)
-            const Padding(
-              padding: EdgeInsets.only(top: 4),
-              child: LinearProgressIndicator(),
-            )
-          else if (allAttachments.isNotEmpty)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Existing attachments section
-                  if (existingAttachments.value.isNotEmpty) ...[
-                    const Text("Existing Attachments",
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                    SizedBox(height: 8.h),
-                    ...existingAttachments.value.map((attachment) => _buildAttachmentItem(attachment, false)).toList(),
-                    SizedBox(height: 16.h),
-                  ],
-
-                  // Newly uploaded files section
-                  if (newlyUploadedAttachments.value.isNotEmpty) ...[
-                    Text("New files to add (${newlyUploadedAttachments.value.length}):",
-                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600, color: Colors.blue)),
-                    SizedBox(height: 8.h),
-                    ...newlyUploadedAttachments.value.map((attachment) => _buildAttachmentItem(attachment, true)).toList(),
-                  ],
-                ],
+          else
+            if (loadingAttachments.value)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: LinearProgressIndicator(),
               )
             else
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text("No attachments",
-                    style: TextStyle(color: Colors.grey, fontSize: 14)),
-              ),
+              if (allAttachments.isNotEmpty)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Existing attachments section
+                    if (existingAttachments.value.isNotEmpty) ...[
+                      const Text("Existing Attachments",
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600, fontSize: 14)),
+                      SizedBox(height: 8.h),
+                      ...existingAttachments.value.map((attachment) =>
+                          _buildAttachmentItem(attachment, false)).toList(),
+                      SizedBox(height: 16.h),
+                    ],
+
+                    // Newly uploaded files section
+                    if (newlyUploadedAttachments.value.isNotEmpty) ...[
+                      Text("New files to add (${newlyUploadedAttachments.value
+                          .length}):",
+                          style: TextStyle(fontSize: 14.sp,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue)),
+                      SizedBox(height: 8.h),
+                      ...newlyUploadedAttachments.value.map((attachment) =>
+                          _buildAttachmentItem(attachment, true)).toList(),
+                    ],
+                  ],
+                )
+              else
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text("No attachments",
+                      style: TextStyle(color: Colors.grey, fontSize: 14)),
+                ),
         ],
       );
     }
@@ -683,157 +714,268 @@ class EditTeacherNoteView extends HookConsumerWidget {
 // Helper method to build individual attachment items
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Edit Teacher Note",
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color.fromARGB(255, 208, 28, 127),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.pink, Colors.blue],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Container(
-          alignment: Alignment.center,
-          padding: EdgeInsets.all(20.w),
-          margin: EdgeInsets.all(20.w),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(15.r),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                spreadRadius: 2,
-              )
-            ],
-          ),
-          child: SingleChildScrollView(
-            child: FormBuilder(
-              key: formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Read-only fields
-                  _buildReadOnlyField("Class", _getClassDisplayText()),
-                  SizedBox(height: 10.h),
-                  _buildReadOnlyField(
-                      "Subject", note.subjectname ?? 'Not specified'),
-                  SizedBox(height: 10.h),
-                  _buildReadOnlyField("Date", _getFormattedDate()),
-                  SizedBox(height: 10.h),
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar with gradient
+          SliverAppBar(
+            expandedHeight: 130.h,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFEF2C42),
+                      Color(0xFF764BA2),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 45.w, vertical: 0.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Row(
+                          children: [
 
-                  // Editable description
-                  const Text("*Description",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  SizedBox(height: 5.h),
-                  TextField(
-                    controller: _descriptionController,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                      hintText: "Type here...",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
+                            // SizedBox(width: 10.w),
+                            Container(
+                              width: 45.w,
+                              height: 48.h,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.note_alt_outlined,
+                                color: Colors.white,
+                                size: 24.w,
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Edit Teacher Note",
+                                    style: TextStyle(
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    "${_getClassDisplayText()} • ${_getFormattedDate()}",
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 60.h),
+                      ],
                     ),
                   ),
-                  // FormBuilderTextField(
-                  //   name: 'description',
-                  //   maxLines: 3,
-                  //   initialValue: _descriptionController,
-                  //   validator: FormBuilderValidators.required(
-                  //       errorText: 'Description is mandatory'),
-                  //   decoration: InputDecoration(
-                  //     hintText: "Type here...",
-                  //     border: OutlineInputBorder(
-                  //         borderRadius: BorderRadius.circular(10.r)),
-                  //   ),
-                  // ),
-
-                  SizedBox(height: 20.h),
-                  _buildAttachmentSection(),
-                  SizedBox(height: 20.h),
-
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color.fromARGB(255, 78, 157, 222),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18.r)),
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                          ),
-                          onPressed: isUploading.value ? null : onEdit,
-                          icon: isUploading.value
-                              ? SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : Icon(Icons.save,
-                                  size: 16.sp, color: Colors.white),
-                          label: Text(
-                            isUploading.value ? "Updating..." : "Update",
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 20.w),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade400,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18.r)),
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                          ),
-                          onPressed: resetForm,
-                          icon: Icon(Icons.refresh,
-                              size: 16.sp, color: Colors.black),
-                          label: const Text("Reset",
-                              style:
-                                  TextStyle(color: Colors.black, fontSize: 14)),
-                        ),
-                      ),
-                    ],
+                ),
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(30.h),
+              child: Container(
+                height: 30.h,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30.r),
+                    topRight: Radius.circular(30.r),
                   ),
-                ],
+                ),
               ),
             ),
           ),
-        ),
+
+          // Content
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              child: FormBuilder(
+                key: formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Read-only fields
+                    _buildReadOnlyField("Class", _getClassDisplayText()),
+                    SizedBox(height: 10.h),
+                    _buildReadOnlyField(
+                        "Subject", note.subjectname ?? 'Not specified'),
+                    SizedBox(height: 10.h),
+                    _buildReadOnlyField("Date", _getFormattedDate()),
+                    SizedBox(height: 10.h),
+
+                    // Editable description
+                    const Text("*Description",
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    SizedBox(height: 5.h),
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                        hintText: "Type here...",
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.r)),
+                      ),
+                    ),
+
+                    SizedBox(height: 20.h),
+                    _buildAttachmentSection(),
+                    SizedBox(height: 20.h),
+
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3E86DA),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              elevation: 2,
+                            ),
+                            onPressed: isUploading.value ? null : onEdit,
+                            icon: isUploading.value
+                                ? SizedBox(
+                              width: 20.w,
+                              height: 20.h,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white),
+                              ),
+                            )
+                                : Icon(Icons.save_rounded, size: 20.w),
+                            label: Text(
+                              isUploading.value ? "Updating..." : "Update",
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            onPressed: resetForm,
+                            icon: Icon(Icons.refresh_rounded, size: 20.w),
+                            label: Text(
+                              "Reset",
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+// Update the _buildReadOnlyField method to match the new style
+    Widget _buildReadOnlyField(String label, String value) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          SizedBox(height: 6.h),
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.symmetric(vertical: 14.h, horizontal: 16.w),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12.r),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
 
   // Helper methods
-  Widget _buildReadOnlyField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontWeight: FontWeight.bold)),
-        SizedBox(height: 5.h),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 12.w),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade400),
-            borderRadius: BorderRadius.circular(10.r),
-            color: Colors.grey.shade100,
-          ),
-          child: Text(value, style: TextStyle(fontSize: 14.sp)),
-        ),
-      ],
-    );
-  }
+
 
   Widget _getFileIcon(String fileName) {
     if (fileName.contains('.jpg') || fileName.contains('.png')) {

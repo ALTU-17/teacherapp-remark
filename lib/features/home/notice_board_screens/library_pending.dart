@@ -125,22 +125,53 @@ Future<void> feychData() async {
 }
 
 final pendingLibraryProvider =
-FutureProvider<List<PendingLibraryBook>>((ref) async {
+FutureProvider.autoDispose<List<PendingLibraryBook>>((ref) async {
   final api = ref.watch(staffApiProvider);
   return api.getPendingBooksForReturn();
 });
 
-class LibraryPendingScreen extends ConsumerWidget {
+class LibraryPendingScreen extends ConsumerStatefulWidget {
   const LibraryPendingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LibraryPendingScreen> createState() =>
+      _LibraryPendingScreenState();
+}
+
+class _LibraryPendingScreenState
+    extends ConsumerState<LibraryPendingScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.invalidate(pendingLibraryProvider);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(pendingLibraryProvider);
 
     return Scaffold(
       backgroundColor: Color(0xFFF8F9FA),
       body: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
         slivers: [
+          CupertinoSliverRefreshControl(
+            onRefresh: () async {
+              ref.invalidate(pendingLibraryProvider);
+
+              await ref.read(
+                pendingLibraryProvider.future,
+              );
+            },
+          ),
           SliverAppBar(
             expandedHeight: 160.h,
             floating: false,

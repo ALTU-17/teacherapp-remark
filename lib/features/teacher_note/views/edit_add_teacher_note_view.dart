@@ -373,137 +373,325 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Create Teacher Note",
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color.fromARGB(255, 208, 28, 127),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.pink, Colors.blue],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: Container(
-          alignment: Alignment.center,
-          padding: EdgeInsets.all(20.w),
-          margin: EdgeInsets.all(20.w),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.9),
-            borderRadius: BorderRadius.circular(15.r),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 10,
-                spreadRadius: 2,
-              )
-            ],
-          ),
-          child: SingleChildScrollView(
-            child: FormBuilder(
-              key: fromKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Class Selection
-                  const Text("*Class", style: TextStyle(fontWeight: FontWeight.bold)),
-                  _buildClassSelection(),
-
-                  // Subject Selection
-                  const Text("Subject", style: TextStyle(fontWeight: FontWeight.bold)),
-                  SizedBox(height: 5.h),
-                  _buildSubjectSelection(),
-
-                  SizedBox(height: 10.h),
-
-                  // Date Picker (Non-editable, auto-filled with today's date)
-                  const Text("*Date", style: TextStyle(fontWeight: FontWeight.bold)),
-                  SizedBox(height: 5.h),
-                  FormBuilderDateTimePicker(
-                    name: 'dailynote_date',
-                    initialValue: DateTime.now(), // Always today's date
-                    format: DateFormat('dd-MM-yyyy'),
-                    inputType: InputType.date,
-                    enabled: false, // makes it non-editable
-                    valueTransformer: (v) => v?.toString().split(" ").first,
-                    validator: FormBuilderValidators.required(errorText: 'Date is mandatory'),
-                    decoration: InputDecoration(
-                      hintText: "Select Date",
-                      prefixIcon: const Icon(Icons.calendar_today),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
-                    ),
-                  ),
-
-
-                  SizedBox(height: 10.h),
-
-                  // Description
-                  const Text("*Description", style: TextStyle(fontWeight: FontWeight.bold)),
-                  SizedBox(height: 5.h),
-                  FormBuilderTextField(
-                    name: 'description',
-                    maxLines: 3,
-                    validator: FormBuilderValidators.required(errorText: 'Description is mandatory'),
-                    decoration: InputDecoration(
-                      hintText: "Type here...",
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10.r)),
-                    ),
-                  ),
-
-                  SizedBox(height: 20.h),
-
-                  // Attachment Section
-                  _buildAttachmentSection(),
-                  SizedBox(height: 20.h),
-
-                  // Save & Reset Buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromARGB(255, 78, 157, 222),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                          ),
-                          onPressed: (isUploading.value || teacherNoteState.isLoading) ? null : onSave,
-                          icon: (isUploading.value || teacherNoteState.isLoading)
-                              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : Icon(Icons.save, size: 16.sp, color: Colors.white),
-                          label: Text(
-                            (isUploading.value || teacherNoteState.isLoading)
-                                ? "Creating..."
-                                : "Save",
-                            style: TextStyle(color: Colors.white, fontSize: 14),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 20.w),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade400,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-                            padding: EdgeInsets.symmetric(vertical: 12.h),
-                          ),
-                          onPressed: resetForm,
-                          icon: Icon(Icons.refresh, size: 16.sp, color: Colors.black),
-                          label: const Text("Reset", style: TextStyle(color: Colors.black, fontSize: 14)),
-                        ),
-                      ),
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: CustomScrollView(
+        slivers: [
+          // App Bar with gradient
+          SliverAppBar(
+            expandedHeight: 130.h,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      Color(0xFFEF2C42),
+                      Color(0xFF764BA2),
                     ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 45.w, vertical: 0.h),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Row(
+                          children: [
+                            // Container(
+                            //   width: 45.w,
+                            //   height: 48.h,
+                            //   decoration: BoxDecoration(
+                            //     color: Colors.white.withOpacity(0.2),
+                            //     borderRadius: BorderRadius.circular(12.r),
+                            //     border: Border.all(
+                            //       color: Colors.white.withOpacity(0.3),
+                            //     ),
+                            //   ),
+                            //   child: IconButton(
+                            //     onPressed: () => context.pop(),
+                            //     icon: Icon(
+                            //       Icons.arrow_back_rounded,
+                            //       color: Colors.white,
+                            //       size: 24.w,
+                            //     ),
+                            //     padding: EdgeInsets.zero,
+                            //   ),
+                            // ),
+                            // SizedBox(width: 10.w),
+                            Container(
+                              width: 45.w,
+                              height: 48.h,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12.r),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.note_add_rounded,
+                                color: Colors.white,
+                                size: 24.w,
+                              ),
+                            ),
+                            SizedBox(width: 10.w),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Create Teacher Note",
+                                    style: TextStyle(
+                                      fontSize: 22.sp,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                      shadows: [
+                                        Shadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(height: 4.h),
+                                  Text(
+                                    "Add a new teacher note",
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 60.h),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            bottom: PreferredSize(
+              preferredSize: Size.fromHeight(30.h),
+              child: Container(
+                height: 30.h,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8F9FA),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(30.r),
+                    topRight: Radius.circular(30.r),
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+
+          // Content
+          SliverToBoxAdapter(
+            child: Container(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+              child: FormBuilder(
+                key: fromKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Class Selection
+                    Text(
+                      "*Class",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    _buildClassSelection(),
+
+                    SizedBox(height: 16.h),
+
+                    // Subject Selection
+                    Text(
+                      "Subject",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    _buildSubjectSelection(),
+
+                    SizedBox(height: 16.h),
+
+                    // Date Picker (Non-editable, auto-filled with today's date)
+                    Text(
+                      "*Date",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    FormBuilderDateTimePicker(
+                      name: 'dailynote_date',
+                      initialValue: DateTime.now(),
+                      format: DateFormat('dd-MM-yyyy'),
+                      inputType: InputType.date,
+                      enabled: false,
+                      valueTransformer: (v) => v?.toString().split(" ").first,
+                      validator: FormBuilderValidators.required(errorText: 'Date is mandatory'),
+                      decoration: InputDecoration(
+                        hintText: "Select Date",
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        prefixIcon: Icon(Icons.calendar_today, color: Colors.grey.shade600),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
+
+                    SizedBox(height: 16.h),
+
+                    // Description
+                    Text(
+                      "*Description",
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 6.h),
+                    FormBuilderTextField(
+                      name: 'description',
+                      maxLines: 5,
+                      validator: FormBuilderValidators.required(errorText: 'Description is mandatory'),
+                      decoration: InputDecoration(
+                        hintText: "Type here...",
+                        hintStyle: TextStyle(color: Colors.grey.shade400),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                          borderSide: const BorderSide(color: Color(0xFF667EEA), width: 2),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                    ),
+
+                    SizedBox(height: 20.h),
+
+                    // Attachment Section
+                    _buildAttachmentSection(),
+
+                    SizedBox(height: 24.h),
+
+                    // Save & Reset Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3E86DA),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              elevation: 2,
+                            ),
+                            onPressed: (isUploading.value || teacherNoteState.isLoading) ? null : onSave,
+                            icon: (isUploading.value || teacherNoteState.isLoading)
+                                ? SizedBox(
+                              width: 20.w,
+                              height: 20.h,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                                : Icon(Icons.save_rounded, size: 20.w),
+                            label: Text(
+                              (isUploading.value || teacherNoteState.isLoading)
+                                  ? "Creating..."
+                                  : "Save",
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 12.w),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              padding: EdgeInsets.symmetric(vertical: 14.h),
+                              side: BorderSide(color: Colors.grey.shade300),
+                            ),
+                            onPressed: resetForm,
+                            icon: Icon(Icons.refresh_rounded, size: 20.w),
+                            label: Text(
+                              "Reset",
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20.h),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

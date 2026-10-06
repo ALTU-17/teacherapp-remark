@@ -49,6 +49,8 @@ class RemarkService {
       },
     );
     if (res.statusCode == 200 && res.data['status'] == true) {
+      print('getClassAndSection_teacheralloted Response body: ${res}');
+
       return (res.data['class_name'] as List)
           .map((e) => ClassSection.fromJson(e))
           .toList();

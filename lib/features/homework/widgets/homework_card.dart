@@ -137,7 +137,7 @@ class HomeworkNoteCard extends HookConsumerWidget {
             borderRadius: BorderRadius.circular(12.r),
           ),
           child: Padding(
-            padding: EdgeInsets.all(12.w),
+            padding: EdgeInsets.fromLTRB(12,5,12,0),
             child: Opacity(
               opacity: isPublishing.value ? 0.6 : 1.0,
               child: Column(
