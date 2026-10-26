@@ -120,7 +120,12 @@ RouteBase get $homeShellRoute => ShellRouteData.$route(
             GoRouteData.$route(
               path: 'id',
               factory: _$IDRoute._fromState,
-            ), GoRouteData.$route(
+            ),
+            GoRouteData.$route(
+              path: 'upload',
+              factory: _$UploadMarksRoute._fromState,
+            ),
+            GoRouteData.$route(
               path: 'exam',
               factory: _$ExamRoute._fromState,
             ),
@@ -583,6 +588,28 @@ mixin _$IDRoute on GoRouteData {
   @override
   String get location => GoRouteData.$location(
         '/dashbaord/id',
+      );
+
+  @override
+  void go(BuildContext context) => context.go(location);
+
+  @override
+  Future<T?> push<T>(BuildContext context) => context.push<T>(location);
+
+  @override
+  void pushReplacement(BuildContext context) =>
+      context.pushReplacement(location);
+
+  @override
+  void replace(BuildContext context) => context.replace(location);
+}
+mixin _$UploadMarksRoute on GoRouteData {
+  static UploadMarksRoute _fromState(GoRouterState state) =>
+      const UploadMarksRoute();
+
+  @override
+  String get location => GoRouteData.$location(
+        '/dashbaord/upload',
       );
 
   @override

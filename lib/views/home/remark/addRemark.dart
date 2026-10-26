@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,7 +12,8 @@ import 'model/ClassSubStudentModel.dart';
 import 'model/create_remark_body.dart';
 
 class AddRemark extends HookConsumerWidget {
-  const AddRemark({super.key});
+  final List<PlatformFile> initialFiles;
+  const AddRemark({this.initialFiles = const [], super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -21,6 +23,7 @@ class AddRemark extends HookConsumerWidget {
     final _dateController = useTextEditingController(
         text: "${DateTime.now().day}-${DateTime.now().month}-${DateTime.now().year}");
     final pickedFiles = useState<List<PlatformFile>>([]);
+    final pendingSharedFiles = useState<List<PlatformFile>>(initialFiles);
     final uploading = useState<bool>(false);
     final uploadedFiles = useState<List<String>>([]);
     final selectedClassSection = useValueNotifier<ClassSection?>(null);
@@ -28,7 +31,7 @@ class AddRemark extends HookConsumerWidget {
     final selectedStudents = useValueNotifier<List<Student>>([]);
     final remarkType = useState<String>('Remark');
     final selectedClassSectionValue = useValueListenable(selectedClassSection);
-    final selectedSubjectValue = useValueListenable(selectedSubject);
+    final selectedStudentsValue = useValueListenable(selectedStudents);
     final _subjectOfRemarkController = useTextEditingController();
     final _remarkController = useTextEditingController();
     final classSectionsAsync = ref.watch(classSectionProvider);
@@ -54,22 +57,40 @@ class AddRemark extends HookConsumerWidget {
       _subjectOfRemarkController.clear();
       _remarkController.clear();
       pickedFiles.value = [];
+      pendingSharedFiles.value = [];
       uploadedFiles.value = [];
       deleteimagelist.value = [];
     }
 
 
+    Future<List<int>?> _readPlatformFileBytes(PlatformFile file) async {
+      if (file.bytes != null) return file.bytes;
+      final path = file.path;
+      if (path == null || path.isEmpty) return null;
+      final ioFile = File(path);
+      if (!await ioFile.exists()) return null;
+      return ioFile.readAsBytes();
+    }
 
-    Future<void> _uploadFiles() async {
+    Future<void> _uploadFiles([List<PlatformFile>? filesToUpload]) async {
+      final files = filesToUpload ?? pickedFiles.value;
+      if (files.isEmpty) return;
+
       uploading.value = true;
       final remarkService = ref.read(remarkServiceProvider);
 
-      for (final f in pickedFiles.value) {
+      for (final f in files) {
+        final fileBytes = await _readPlatformFileBytes(f);
+        if (fileBytes == null) {
+          _showSnack(context, "Could not read ${f.name}");
+          continue;
+        }
+
         final success = await remarkService.uploadRemarkDocument(
           studentIds: json.encode(selectedStudents.value.map((e) => e.studentId).toList()),
           shortName: ref.read(authProvider).requireValue.teacherVerification?.shortName ?? "",
           filename: f.name,
-          fileBytes: f.bytes!,
+          fileBytes: fileBytes,
           uploadDate: _dateController.text,
         );
 
@@ -83,6 +104,31 @@ class AddRemark extends HookConsumerWidget {
       pickedFiles.value = [];
       uploading.value = false;
     }
+
+    useEffect(() {
+      final canUploadSharedFiles = selectedClassSectionValue != null &&
+          selectedStudentsValue.isNotEmpty &&
+          pendingSharedFiles.value.isNotEmpty &&
+          remarkType.value == 'Remark' &&
+          !uploading.value;
+      if (canUploadSharedFiles) {
+        final files = pendingSharedFiles.value;
+        pendingSharedFiles.value = [];
+        pickedFiles.value = files;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            _uploadFiles(files);
+          }
+        });
+      }
+      return null;
+    }, [
+      selectedClassSectionValue,
+      selectedStudentsValue,
+      pendingSharedFiles.value,
+      remarkType.value,
+      uploading.value,
+    ]);
 
     Future<void> _pickFiles() async {
       final result = await FilePicker.platform.pickFiles(
@@ -131,6 +177,12 @@ class AddRemark extends HookConsumerWidget {
       }
     }
 
+    void _deletePendingSharedFile(String filename) {
+      pendingSharedFiles.value =
+          pendingSharedFiles.value.where((f) => f.name != filename).toList();
+      _showSnack(context, "Removed $filename");
+    }
+
     Future<void> _saveRemark() async {
       if (!_formKey.currentState!.validate()) return;
       if (selectedClassSection.value == null) {
@@ -144,6 +196,12 @@ class AddRemark extends HookConsumerWidget {
       if (selectedStudents.value.isEmpty) {
         _showSnack(context, "Please select at least one student");
         return;
+      }
+      if (remarkType.value == 'Remark' && pendingSharedFiles.value.isNotEmpty) {
+        final files = pendingSharedFiles.value;
+        pendingSharedFiles.value = [];
+        pickedFiles.value = files;
+        await _uploadFiles(files);
       }
       uploading.value = true;
 
@@ -423,6 +481,42 @@ class AddRemark extends HookConsumerWidget {
                                     Expanded(child: Text(f.name, style: TextStyle(fontSize: 13))),
                                   ],
                                 )).toList(),
+                          ),
+                        ),
+                      if (pendingSharedFiles.value.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                              left: 8.0, top: 2, bottom: 2),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Ready to upload after selecting students",
+                                style: TextStyle(
+                                    fontSize: 12.sp, color: Colors.grey),
+                              ),
+                              ...pendingSharedFiles.value.map((f) => Row(
+                                    children: [
+                                      const Icon(Icons.insert_drive_file,
+                                          size: 18, color: Colors.blueGrey),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          f.name,
+                                          style: const TextStyle(fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete,
+                                            color: Colors.red, size: 18),
+                                        onPressed: () =>
+                                            _deletePendingSharedFile(f.name),
+                                        tooltip: "Remove",
+                                      ),
+                                    ],
+                                  )),
+                            ],
                           ),
                         ),
                       if (uploadedFiles.value.isNotEmpty)

@@ -8,6 +8,7 @@ class CustomDropdownField extends StatelessWidget {
   final List<String> options;
   final Function(String?)? onChanged;
   final bool isRequired;
+  final bool readOnly;
   final String name;
 
   const CustomDropdownField({
@@ -18,6 +19,7 @@ class CustomDropdownField extends StatelessWidget {
     this.onChanged,
     required this.name,
     this.isRequired = false,
+    this.readOnly = false,
   });
 
   @override
@@ -49,23 +51,30 @@ class CustomDropdownField extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: FormBuilderDropdown(
-              name: name,
-              initialValue: initialValue,
-              //  value: value,
-              items: options.map((item) {
-                return DropdownMenuItem(
-                  value: item,
-                  child: Text(item, style: TextStyle(fontSize: 12.sp)),
-                );
-              }).toList(),
-              onChanged: onChanged,
-              decoration: InputDecoration(
-                isDense: true,
-                contentPadding:
-                    EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.r),
+            child: IgnorePointer(
+              ignoring: readOnly,
+              child: Opacity(
+                opacity: readOnly ? 0.72 : 1,
+                child: FormBuilderDropdown(
+                  name: name,
+                  initialValue: initialValue,
+                  items: options.map((item) {
+                    return DropdownMenuItem(
+                      value: item,
+                      child: Text(item, style: TextStyle(fontSize: 12.sp)),
+                    );
+                  }).toList(),
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    filled: readOnly,
+                    fillColor: readOnly ? Colors.grey.shade100 : null,
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
+                  ),
                 ),
               ),
             ),

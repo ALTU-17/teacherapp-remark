@@ -7,6 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
 import 'features/auth/models/models.dart';
+import 'features/shared_attachments/shared_attachment_listener.dart';
 import 'router/router.dart';
 
 void main() async {
@@ -38,6 +39,11 @@ class MyApp extends ConsumerWidget {
         return MaterialApp.router(
           debugShowCheckedModeBanner: false,
           routerConfig: router,
+          builder: (context, child) {
+            return SharedAttachmentListener(
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           // home: Container(
           //   decoration: const BoxDecoration(
           //     gradient: LinearGradient(

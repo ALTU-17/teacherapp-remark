@@ -3,25 +3,35 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'lesson_plan_template_api_service.dart';
 import 'models.dart';
 
 enum TemplateFormMode { create, edit }
 
 class LessonPlanTemplateFormScreen extends StatefulWidget {
   final TemplateFormMode mode;
+  final int classId;
+  final int subjectId;
+  final int chapterId;
+  final String regId;
   final String className;
   final String subject;
   final String chapter;
-  // For edit mode pass existing headings + values (from API)
-  final List<TemplateFieldData>? existingFields;
+  final int? templateId;
+  final List<TemplateDetail> existingDetails;
 
   const LessonPlanTemplateFormScreen({
     super.key,
     required this.mode,
+    required this.classId,
+    required this.subjectId,
+    required this.chapterId,
+    required this.regId,
     required this.className,
     required this.subject,
     required this.chapter,
-    this.existingFields,
+    this.templateId,
+    this.existingDetails = const [],
   });
 
   @override
@@ -31,70 +41,114 @@ class LessonPlanTemplateFormScreen extends StatefulWidget {
 
 class _LessonPlanTemplateFormScreenState
     extends State<LessonPlanTemplateFormScreen> {
+  final LessonPlanTemplateApiService _apiService =
+      LessonPlanTemplateApiService();
   List<TemplateFieldData> _fields = [];
+  bool _isLoadingHeadings = true;
   bool _isSaving = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _initFields();
+    _loadHeadings();
   }
 
-  void _initFields() {
-    if (widget.existingFields != null && widget.existingFields!.isNotEmpty) {
-      _fields = widget.existingFields!;
-    } else {
-      // TODO: fetch headings from API, e.g. getLessonPlanHeadingNonDaily()
-      // Placeholder based on your web screenshot:
-      _fields = [
-        _f(1, 'demo'),
-        _f(2, 'Learning Objectives'),
-        _f(3, 'Teaching Method'),
-        _f(4, 'Teaching Aids'),
-        _f(5, 'Learning Outcomes'),
-        _f(6, 'Students Activity'),
-        _f(7, 'Homework/ Assessment'),
-        _f(8, 'Notes'),
-        _f(9, 'Activity ( Quiz/ Projects..)'),
-      ];
+  Future<void> _loadHeadings() async {
+    setState(() {
+      _isLoadingHeadings = true;
+      _error = null;
+    });
+
+    try {
+      final headings = await _apiService.getNonDailyHeadings();
+      final descriptionByHeading = {
+        for (final detail in widget.existingDetails)
+          detail.headingId: detail.description,
+      };
+
+      for (final field in _fields) {
+        field.dispose();
+      }
+
+      _fields = headings.map((heading) {
+        return TemplateFieldData(
+          headingId: heading.headingId,
+          headingName: heading.name,
+          controller: TextEditingController(
+            text: descriptionByHeading[heading.headingId] ?? '',
+          ),
+        );
+      }).toList();
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingHeadings = false);
+      }
     }
   }
 
-  TemplateFieldData _f(int id, String name) => TemplateFieldData(
-    headingId: id,
-    headingName: name,
-    controller: TextEditingController(),
-  );
-
   @override
   void dispose() {
-    for (var f in _fields) {
-      f.dispose();
+    for (final field in _fields) {
+      field.dispose();
     }
     super.dispose();
   }
 
   bool get isEdit => widget.mode == TemplateFormMode.edit;
 
+  int get _resolvedTemplateId {
+    final explicitId = widget.templateId ?? 0;
+    if (explicitId > 0) return explicitId;
+    if (widget.existingDetails.isNotEmpty) {
+      return widget.existingDetails.first.templateId;
+    }
+    return 0;
+  }
+
+  List<Map<String, dynamic>> _buildDescriptions() {
+    return _fields.map((field) {
+      final text = field.controller.text.trimRight();
+      final description = text.trim() == '•' ? '' : text;
+      return {
+        'lesson_plan_headings_id': field.headingId,
+        'description': description,
+      };
+    }).toList();
+  }
+
   Future<void> _onSave({required bool publish}) async {
+    if (_isSaving) return;
+
     setState(() => _isSaving = true);
+
     try {
-      // TODO: build payload from _fields + class/subject/chapter
-      // e.g.
-      // final payload = {
-      //   'class_name': widget.className,
-      //   'subject': widget.subject,
-      //   'chapter': widget.chapter,
-      //   'publish': publish ? 'Y' : 'N',
-      //   for (var f in _fields) 'description_${f.headingId}_1': f.controller.text,
-      // };
-      await Future.delayed(const Duration(milliseconds: 400));
+      if (isEdit && _resolvedTemplateId <= 0) {
+        throw Exception('Lesson plan template id missing');
+      }
+
+      final descriptions = _buildDescriptions();
+      final message = isEdit
+          ? await _apiService.updateTemplate(
+              templateId: _resolvedTemplateId,
+              classId: widget.classId,
+              subjectId: widget.subjectId,
+              chapterId: widget.chapterId,
+              descriptions: descriptions,
+              publish: publish,
+            )
+          : await _apiService.saveTemplate(
+              classId: widget.classId,
+              subjectId: widget.subjectId,
+              chapterId: widget.chapterId,
+              descriptions: descriptions,
+              publish: publish,
+            );
 
       if (!mounted) return;
-      _showSnack(
-        isEdit ? 'Template updated successfully' : 'Template saved successfully',
-        true,
-      );
+      _showSnack(message, true);
       await Future.delayed(const Duration(milliseconds: 600));
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -108,8 +162,8 @@ class _LessonPlanTemplateFormScreenState
 
   void _reset() {
     setState(() {
-      for (var f in _fields) {
-        f.controller.clear();
+      for (final field in _fields) {
+        field.controller.clear();
       }
     });
   }
@@ -126,7 +180,8 @@ class _LessonPlanTemplateFormScreenState
         backgroundColor: ok ? Colors.green.shade700 : Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
         margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
       ),
     );
   }
@@ -151,7 +206,9 @@ class _LessonPlanTemplateFormScreenState
             onPressed: () => Navigator.of(context).pop(false),
           ),
           title: Text(
-            isEdit ? 'Edit Lesson Plan Template' : 'Create Lesson Plan Template',
+            isEdit
+                ? 'Edit Lesson Plan Template'
+                : 'Create Lesson Plan Template',
             style: TextStyle(
               color: Colors.white,
               fontSize: 17.sp,
@@ -168,91 +225,7 @@ class _LessonPlanTemplateFormScreenState
                   borderRadius: BorderRadius.circular(16.r)),
               child: Padding(
                 padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Info chips ──────────────────
-                    Wrap(
-                      spacing: 8.w,
-                      runSpacing: 8.h,
-                      children: [
-                        _chip(Icons.home_work_rounded, 'Class: ${widget.className}', Colors.purple),
-                        _chip(Icons.menu_book_rounded, 'Subject: ${widget.subject}', Colors.blue),
-                        _chip(Icons.edit_note_rounded, 'Chapter: ${widget.chapter}', Colors.orange),
-                      ],
-                    ),
-                    SizedBox(height: 16.h),
-
-                    // ── Horizontal table of dynamic headings ──
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        clipBehavior: Clip.hardEdge,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // header row
-                            Container(
-                              color: Colors.grey.shade200,
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 10.w, vertical: 12.h),
-                              child: Row(
-                                children: _fields
-                                    .map((f) => SizedBox(
-                                  width: 190.w,
-                                  child: Text(
-                                    f.headingName,
-                                    style: TextStyle(
-                                      fontSize: 13.sp,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.grey.shade800,
-                                    ),
-                                  ),
-                                ))
-                                    .toList(),
-                              ),
-                            ),
-                            // body row
-                            Row(
-                              children: _fields
-                                  .map((f) => SizedBox(
-                                width: 190.w,
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(
-                                      right: BorderSide(
-                                          color: Colors.grey.shade300),
-                                    ),
-                                  ),
-                                  child: TextField(
-                                    controller: f.controller,
-                                    maxLines: 14,
-                                    decoration: InputDecoration(
-                                      border: InputBorder.none,
-                                      contentPadding: EdgeInsets.all(10.w),
-                                      hintText: '',
-                                    ),
-                                    style: TextStyle(fontSize: 12.sp),
-                                  ),
-                                ),
-                              ))
-                                  .toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    SizedBox(height: 16.h),
-
-                    // ── Action buttons (match web) ──
-                    _buildActionButtons(),
-                  ],
-                ),
+                child: _buildBody(),
               ),
             ),
           ),
@@ -261,54 +234,343 @@ class _LessonPlanTemplateFormScreenState
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
+  Widget _buildBody() {
+    if (_isLoadingHeadings) {
+      return SizedBox(
+        height: 220.h,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_error != null) {
+      return SizedBox(
+        height: 220.h,
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, color: Colors.red.shade700, size: 32.w),
+              SizedBox(height: 8.h),
+              Text(
+                _error!,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13.sp),
+              ),
+              SizedBox(height: 12.h),
+              ElevatedButton.icon(
+                onPressed: _loadHeadings,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (!isEdit) ...[
-          _filledBtn(
-            label: 'Save',
-            color: Colors.blue,
-            onTap: _isSaving ? null : () => _onSave(publish: false),
+        Wrap(
+          spacing: 8.w,
+          runSpacing: 8.h,
+          children: [
+            _chip(Icons.home_work_rounded, 'Class: ${widget.className}',
+                Colors.purple),
+            _chip(Icons.menu_book_rounded, 'Subject: ${widget.subject}',
+                Colors.blue),
+            _chip(Icons.edit_note_rounded, 'Chapter: ${widget.chapter}',
+                Colors.orange),
+          ],
+        ),
+        SizedBox(height: 16.h),
+        if (_fields.isEmpty)
+          SizedBox(
+            height: 160.h,
+            child: Center(
+              child: Text(
+                'No lesson plan headings found',
+                style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+              ),
+            ),
+          )
+        else
+          _buildHeadingTable(),
+        SizedBox(height: 16.h),
+        _buildActionButtons(),
+      ],
+    );
+  }
+
+  Widget _buildHeadingTable() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.menu_book_rounded,
+                color: Colors.blue.shade700, size: 18.w),
+            SizedBox(width: 8.w),
+            Text(
+              'Teaching Details',
+              style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        SizedBox(height: 10.h),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final fieldWidth = constraints.maxWidth < 390.w ? 112.w : 150.w;
+
+            return Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(10.r),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: Column(
+                children: [
+                  Container(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(10.r),
+                        topRight: Radius.circular(10.r),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: fieldWidth,
+                          child: Text(
+                            'Field',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Content',
+                            style: TextStyle(
+                              fontSize: 13.sp,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ..._fields.map(
+                    (field) => _buildTeachingDetailRow(field, fieldWidth),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTeachingDetailRow(TemplateFieldData field, double fieldWidth) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: fieldWidth,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(_headingIcon(field.headingId),
+                    size: 16.w, color: Colors.blue.shade700),
+                SizedBox(width: 6.w),
+                Expanded(
+                  child: Text(
+                    field.headingName,
+                    style: TextStyle(
+                      fontSize: 13.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-          SizedBox(width: 10.w),
-          _filledBtn(
-            label: 'Save & Publish',
-            color: Colors.blue.shade700,
-            onTap: _isSaving ? null : () => _onSave(publish: true),
-          ),
-          SizedBox(width: 10.w),
-          _filledBtn(
-            label: 'Reset',
-            color: Colors.red,
-            onTap: _isSaving ? null : _reset,
-          ),
-          SizedBox(width: 10.w),
-          _filledBtn(
-            label: 'Back',
-            color: Colors.amber,
-            onTap: _isSaving ? null : () => Navigator.of(context).pop(false),
-          ),
-        ] else ...[
-          _filledBtn(
-            label: 'Update',
-            color: Colors.blue,
-            onTap: _isSaving ? null : () => _onSave(publish: false),
-          ),
-          SizedBox(width: 10.w),
-          _filledBtn(
-            label: 'Update & Publish',
-            color: Colors.blue.shade700,
-            onTap: _isSaving ? null : () => _onSave(publish: true),
-          ),
-          SizedBox(width: 10.w),
-          _filledBtn(
-            label: 'Back',
-            color: Colors.amber,
-            onTap: _isSaving ? null : () => Navigator.of(context).pop(false),
+          Expanded(
+            child: TextField(
+              controller: field.controller,
+              minLines: 3,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8.r),
+                ),
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
+                hintText: '• Enter details...',
+                isDense: true,
+              ),
+              style: TextStyle(fontSize: 12.sp),
+              onChanged: (value) {
+                if (value.isNotEmpty) {
+                  _applyBulletFormatting(field.controller);
+                }
+              },
+              onTap: () {
+                if (field.controller.text.isEmpty) {
+                  field.controller.value = const TextEditingValue(
+                    text: '• ',
+                    selection: TextSelection.collapsed(offset: 2),
+                  );
+                }
+              },
+            ),
           ),
         ],
-      ],
+      ),
+    );
+  }
+
+  IconData _headingIcon(int headingId) {
+    switch (headingId) {
+      case 2:
+        return Icons.track_changes_rounded;
+      case 3:
+        return Icons.menu_book_rounded;
+      case 4:
+        return Icons.edit_rounded;
+      case 5:
+        return Icons.military_tech_rounded;
+      case 6:
+        return Icons.groups_rounded;
+      case 7:
+        return Icons.home_work_rounded;
+      case 8:
+        return Icons.notes_rounded;
+      case 9:
+        return Icons.emoji_events_rounded;
+      case 88:
+        return Icons.format_list_bulleted_rounded;
+      case 90:
+        return Icons.calendar_view_month_rounded;
+      case 93:
+        return Icons.map_outlined;
+      case 95:
+        return Icons.format_list_numbered_rounded;
+      default:
+        return Icons.article_outlined;
+    }
+  }
+
+  void _applyBulletFormatting(TextEditingController controller) {
+    final text = controller.text;
+    final selection = controller.selection;
+    final lines = text.split('\n');
+    final formattedLines = lines.map((line) {
+      if (line.isEmpty) return line;
+      if (line == '• ') return line;
+      if (line.startsWith('• ')) return line;
+      return '• $line';
+    }).toList();
+
+    final newText = formattedLines.join('\n');
+    if (newText == text) return;
+
+    var cursorPos = selection.baseOffset;
+    var addedChars = 0;
+    var charCount = 0;
+
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final lineEnd = charCount + line.length;
+      if (cursorPos <= lineEnd) break;
+      if (line.isNotEmpty && !line.startsWith('• ')) addedChars += 2;
+      charCount += line.length + 1;
+    }
+
+    if (cursorPos > 0 && cursorPos <= text.length) {
+      final currentLineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+      final nextBreak = text.indexOf('\n', cursorPos);
+      final currentLine = text.substring(
+        currentLineStart,
+        nextBreak == -1 ? text.length : nextBreak,
+      );
+      if (currentLine.isNotEmpty && !currentLine.startsWith('• ')) {
+        addedChars += 2;
+      }
+    }
+
+    final newCursor = (cursorPos + addedChars).clamp(0, newText.length);
+    controller.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newCursor),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final buttons = isEdit
+        ? [
+            _filledBtn(
+              label: 'Update',
+              color: Colors.blue,
+              onTap: _isSaving ? null : () => _onSave(publish: false),
+            ),
+            _filledBtn(
+              label: 'Update & Publish',
+              color: Colors.blue.shade700,
+              onTap: _isSaving ? null : () => _onSave(publish: true),
+            ),
+            _filledBtn(
+              label: 'Back',
+              color: Colors.amber,
+              onTap: _isSaving ? null : () => Navigator.of(context).pop(false),
+            ),
+          ]
+        : [
+            _filledBtn(
+              label: 'Save',
+              color: Colors.blue,
+              onTap: _isSaving ? null : () => _onSave(publish: false),
+            ),
+            _filledBtn(
+              label: 'Save & Publish',
+              color: Colors.blue.shade700,
+              onTap: _isSaving ? null : () => _onSave(publish: true),
+            ),
+            _filledBtn(
+              label: 'Reset',
+              color: Colors.red,
+              onTap: _isSaving ? null : _reset,
+            ),
+            _filledBtn(
+              label: 'Back',
+              color: Colors.amber,
+              onTap: _isSaving ? null : () => Navigator.of(context).pop(false),
+            ),
+          ];
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: 10.w,
+        runSpacing: 10.h,
+        children: buttons,
+      ),
     );
   }
 
@@ -326,18 +588,14 @@ class _LessonPlanTemplateFormScreenState
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(horizontal: 20.w),
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
         ),
-        child: _isSaving && onTap == null
-            ? SizedBox(
-          width: 16.w,
-          height: 16.h,
-          child: const CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
-        )
-            : Text(label, style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 13.sp, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

@@ -77,3 +77,7 @@ class Config {
     }
   }
 }
+
+
+// Smart Goal
+// IOS Dev and releases.

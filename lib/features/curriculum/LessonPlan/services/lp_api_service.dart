@@ -75,6 +75,7 @@ class ApiService {
       Uri.parse('${baseUrl}get_chapter_info_class_sub_id?class_id=$classId&subject_id=$subjectId'),
       headers: headers,
     );
+    log('get_chapter_info_class_sub_id Response body: ${response.body}');
 
     if (response.statusCode != 200) {
       throw Exception('Failed to load chapters: ${response.statusCode}');

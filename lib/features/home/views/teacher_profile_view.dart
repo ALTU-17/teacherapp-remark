@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:teacherapp/common/customDropDown.dart';
 import 'package:teacherapp/config/utils.dart';
 import 'package:teacherapp/features/auth/models/teacher_user.dart';
@@ -14,7 +11,6 @@ import 'package:go_router/go_router.dart';
 import 'package:teacherapp/features/home/views/teacher_id.dart';
 import 'package:teacherapp/router/routers.dart';
 import '../../auth/auth.dart';
-
 
 final teacherLaravelProvider = FutureProvider<Teacher>((ref) async {
   final auth = ref.watch(authProvider).requireValue;
@@ -31,8 +27,6 @@ final teacherLaravelProvider = FutureProvider<Teacher>((ref) async {
   );
 });
 
-
-
 class TeacherProfileView extends HookConsumerWidget {
   const TeacherProfileView({super.key});
 
@@ -44,8 +38,6 @@ class TeacherProfileView extends HookConsumerWidget {
   }
 }
 
-
-
 class _TeacherProfileForm extends HookConsumerWidget {
   final TeacherUser auth;
 
@@ -56,15 +48,13 @@ class _TeacherProfileForm extends HookConsumerWidget {
       final teacher = await ref.read(teacherLaravelProvider.future);
 
       // sync fresh Laravel data into authProvider
-      ref.read(authProvider.notifier)
-          .refreshTeacherFromLaravel(teacher);
+      ref.read(authProvider.notifier).refreshTeacherFromLaravel(teacher);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to refresh profile')),
       );
     }
   }
-
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,34 +64,8 @@ class _TeacherProfileForm extends HookConsumerWidget {
     final authP = ref.read(authProvider.notifier);
     // final image = useState<XFile?>(null);
 
-
-
     print('PROFILE PHONE: ${auth.teacherDetails?.phone}');
     print('PROFILE BG: ${auth.teacherDetails?.bloodGroup}');
-
-
-    final List<String> qualifications = [
-      'HSc',
-      'DCE',
-      'B.A',
-      'B.Com',
-      'B.Sc',
-      'BCS',
-      'BCA',
-      'B.LIS',
-      'BPharm',
-      'BE',
-      'B.Music n Dance',
-      'M.A',
-      'MSE',
-      'M.Com',
-      'M.Sc',
-      'MCA',
-      'M.LIS',
-      'M.Phil',
-      'MBA',
-      'PGDBM'
-    ];
 
     final List<String> profSubjects = [
       'D.Ed',
@@ -121,7 +85,6 @@ class _TeacherProfileForm extends HookConsumerWidget {
       'Untrained',
       'NA'
     ];
-    final List<String> genderOptions = ['male', 'female'];
     final List<String> bloodGroups = [
       'AB+',
       'AB−',
@@ -136,7 +99,7 @@ class _TeacherProfileForm extends HookConsumerWidget {
     onUpdate() async {
       if (key.currentState?.saveAndValidate() ?? false) {
         final selectedQuals =
-        key.currentState?.value['academic_qualification'] as List<String>?;
+            key.currentState?.value['academic_qualification'] as List<String>?;
         if (selectedQuals == null) return;
 
         final x = TeacherDetails.fromJson({
@@ -166,11 +129,12 @@ class _TeacherProfileForm extends HookConsumerWidget {
       }
     }
 
-
     Widget buildProfilePicture() {
       final imageName = auth.teacherDetails?.teacherImageName;
-      final url = '${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName';
-      print('teacher_image body: ${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName');
+      final url =
+          '${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName';
+      print(
+          'teacher_image body: ${auth.teacherVerification?.projectUrl}uploads/teacher_image/$imageName');
 
       // Future<void> onImagePick() async {
       //   try {
@@ -223,8 +187,7 @@ class _TeacherProfileForm extends HookConsumerWidget {
           children: [
             CircleAvatar(
               radius: 70.r,
-              backgroundImage:
-              NetworkImage(url) as ImageProvider,
+              backgroundImage: NetworkImage(url) as ImageProvider,
             ),
             // InkWell(
             //   onTap: onImagePick,
@@ -240,6 +203,13 @@ class _TeacherProfileForm extends HookConsumerWidget {
     }
 
     Widget buildQualificationsSection() {
+      final selectedQualifications = auth.teacherDetails?.academicQual
+              ?.split(',')
+              .map((e) => e.trim())
+              .where((e) => e.isNotEmpty)
+              .toList() ??
+          [];
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -262,40 +232,43 @@ class _TeacherProfileForm extends HookConsumerWidget {
               ),
             ),
           ),
-          FormBuilderFilterChips<String>(
-            name: 'academic_qualification',
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-              errorStyle: TextStyle(fontSize: 11.sp, color: Colors.red),
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Academic Qualification is required';
-              }
-              return null;
-            },
-            options: qualifications
-                .map(
-                  (item) => FormBuilderChipOption(
-                value: item,
-                child: Text(item, style: TextStyle(fontSize: 12.sp)),
+          IgnorePointer(
+            child: Opacity(
+              opacity: 0.72,
+              child: FormBuilderFilterChips<String>(
+                name: 'academic_qualification',
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  errorStyle: TextStyle(fontSize: 11.sp, color: Colors.red),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Academic Qualification is required';
+                  }
+                  return null;
+                },
+                options: selectedQualifications
+                    .map(
+                      (item) => FormBuilderChipOption(
+                        value: item,
+                        child: Text(item, style: TextStyle(fontSize: 12.sp)),
+                      ),
+                    )
+                    .toList(),
+                initialValue: selectedQualifications,
+                selectedColor: Colors.blue.shade100,
+                spacing: 5.w,
+                runSpacing: 1.h,
+                alignment: WrapAlignment.start,
+                checkmarkColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6.r),
+                  side: BorderSide(color: Colors.grey.shade400),
+                ),
               ),
-            )
-                .toList(),
-            initialValue: auth.teacherDetails?.academicQual
-                ?.split(',')
-                .map((e) => e.trim())
-                .toList() ??
-                [],
-            selectedColor: Colors.blue.shade100,
-            spacing: 5.w,
-            runSpacing: 1.h,
-            alignment: WrapAlignment.start,
-            checkmarkColor: Colors.blue,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(6.r),
-              side: BorderSide(color: Colors.grey.shade400),
             ),
           ),
           SizedBox(height: 10.h),
@@ -338,8 +311,8 @@ class _TeacherProfileForm extends HookConsumerWidget {
                       buildProfilePicture(),
                       SizedBox(height: 30.h),
                       _buildRowField('Staff\'s Name',
-                          auth.teacherDetails?.name ?? '', 'name',readOnly: true,
-                          isRequired: true),
+                          auth.teacherDetails?.name ?? '', 'name',
+                          readOnly: true, isRequired: true),
                       _buildRowField(
                         'Date of Birth',
                         formatDate(auth.teacherDetails?.birthday),
@@ -357,14 +330,21 @@ class _TeacherProfileForm extends HookConsumerWidget {
                       ),
 
                       _buildRowField('Designation',
-                          auth.teacherDetails?.designation ?? '', "designation"),
-                      _buildRowField('Employee ID',
-                        auth.teacherDetails?.employeeId ?? '', "Employee ID",readOnly: true,isRequired: true,),
+                          auth.teacherDetails?.designation ?? '', "designation",
+                          readOnly: true),
+                      _buildRowField(
+                        'Employee ID',
+                        auth.teacherDetails?.employeeId ?? '',
+                        "Employee ID",
+                        readOnly: true,
+                        isRequired: true,
+                      ),
                       buildQualificationsSection(),
                       CustomDropdownField(
                         label: 'Professional Qualification',
                         options: profSubjects,
-                        initialValue: auth.teacherDetails?.professionalQual ?? '',
+                        initialValue:
+                            auth.teacherDetails?.professionalQual ?? '',
                         name: 'professional_qual',
                       ),
                       _buildRowField('Subject for D.Ed/B.Ed',
@@ -375,11 +355,13 @@ class _TeacherProfileForm extends HookConsumerWidget {
                         isRequired: true,
                         initialValue: auth.teacherDetails?.trained ?? '',
                         name: 'trained',
+                        readOnly: true,
                       ),
                       _buildRowField('Experience',
                           auth.teacherDetails?.experience ?? '', "experience",
                           isRequired: true),
-                      _buildRowField('Gender',
+                      _buildRowField(
+                        'Gender',
                         auth.teacherDetails?.sex ?? '',
                         "Sex",
                         readOnly: true,
@@ -417,8 +399,8 @@ class _TeacherProfileForm extends HookConsumerWidget {
                         "aadhar_card_no",
                         isNumeric: true,
                       ),
-                      _buildRowField(
-                          'Email ID', auth.teacherDetails?.email ?? '', "email"),
+                      _buildRowField('Email ID',
+                          auth.teacherDetails?.email ?? '', "email"),
                       SizedBox(height: 10.h),
                       Center(
                         child: ElevatedButton(
@@ -451,13 +433,13 @@ class _TeacherProfileForm extends HookConsumerWidget {
   }
 
   Widget _buildRowField(
-      String label,
-      String value,
-      String name, {
-        bool isRequired = false,
-        bool readOnly = false,
-        bool isNumeric = false,
-      }) {
+    String label,
+    String value,
+    String name, {
+    bool isRequired = false,
+    bool readOnly = false,
+    bool isNumeric = false,
+  }) {
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Row(
@@ -474,11 +456,11 @@ class _TeacherProfileForm extends HookConsumerWidget {
                     color: Colors.black),
                 children: isRequired
                     ? [
-                  TextSpan(
-                    text: ' *',
-                    style: TextStyle(color: Colors.red, fontSize: 14.sp),
-                  )
-                ]
+                        TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Colors.red, fontSize: 14.sp),
+                        )
+                      ]
                     : [],
               ),
             ),
@@ -490,11 +472,13 @@ class _TeacherProfileForm extends HookConsumerWidget {
               name: name,
               keyboardType: isNumeric ? TextInputType.number : null,
               inputFormatters:
-              isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
+                  isNumeric ? [FilteringTextInputFormatter.digitsOnly] : null,
               decoration: InputDecoration(
+                filled: readOnly,
+                fillColor: readOnly ? Colors.grey.shade100 : null,
                 isDense: true,
                 contentPadding:
-                EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
+                    EdgeInsets.symmetric(vertical: 10.h, horizontal: 12.w),
                 border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10.r)),
               ),

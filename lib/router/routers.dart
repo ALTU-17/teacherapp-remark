@@ -18,6 +18,7 @@ import '../features/home/notice_board_screens/pending_fees.dart';
 import '../features/home/notice_board_screens/pending_lesson_plans.dart';
 import '../features/home/notice_board_screens/today_homework.dart';
 import '../features/home/notice_board_screens/upcoming_birthdays.dart';
+import '../features/uploadmarks/uploadmarksdashboard.dart';
 import '../views/home/timeTable/exam_timetable.dart';
 import '../features/home/views/teacher_id.dart';
 import '../features/home/views/views.dart';
@@ -204,6 +205,18 @@ class IDRoute extends GoRouteData with _$IDRoute {
   Widget build(BuildContext context, GoRouterState state) {
 
     return StaffIdCardPage();
+  }
+}
+
+class UploadMarksRoute extends GoRouteData with _$UploadMarksRoute {
+  const UploadMarksRoute();
+
+  static const path = 'upload';
+
+  @override
+  Widget build(BuildContext context, GoRouterState state) {
+
+    return EnterExamMarksScreen();
   }
 }
 class ExamRoute extends GoRouteData with _$ExamRoute {

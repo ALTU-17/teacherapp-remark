@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:teacherapp/config/utils.dart';
 import 'package:teacherapp/features/auth/models/models.dart';
 import 'package:teacherapp/features/homework/models/homework_publish_body.dart';
@@ -11,6 +13,15 @@ class HomeworkService {
   final Dio apiClient;
   final String baseUrl;
   const HomeworkService(this.apiClient, this.baseUrl);
+
+  Future<List<int>?> _readPlatformFileBytes(PlatformFile file) async {
+    if (file.bytes != null) return file.bytes;
+    final path = file.path;
+    if (path == null || path.isEmpty) return null;
+    final ioFile = File(path);
+    if (!await ioFile.exists()) return null;
+    return ioFile.readAsBytes();
+  }
 
   Future<List<Homework>> getHomework(
     String regId,
@@ -71,12 +82,14 @@ class HomeworkService {
     final rand = Random().nextInt(100).toString();
     if (b.files.isNotEmpty) {
       for (var file in b.files) {
+        final fileBytes = await _readPlatformFileBytes(file);
+        if (fileBytes == null) return false;
         final x = UploadDocBody.fromJson({
           ...b.toJson(),
           "filename": file.name,
           "random_no": rand,
           "homework_id": b.homeworkId,
-          "datafile": base64Encode(file.bytes!),
+          "datafile": base64Encode(fileBytes),
           "upload_date":
               "${DateTime.parse(b.startDate!).day.toString().padLeft(2, '0')}-${DateTime.parse(b.startDate!).month.toString().padLeft(2, '0')}-${DateTime.parse(b.startDate!).year}",
         });
@@ -378,12 +391,14 @@ class HomeworkService {
     if (b.files.isNotEmpty) {
       for (var file in b.files) {
         try {
+          final fileBytes = await _readPlatformFileBytes(file);
+          if (fileBytes == null) return false;
           final x = UploadDocBody.fromJson({
             ...b.toJson(),
             "random_no": b.homeworkId,
             "filename": file.name,
             "homework_id": b.homeworkId,
-            "datafile": base64Encode(file.bytes!),
+            "datafile": base64Encode(fileBytes),
             "upload_date":
             "${DateTime.parse(b.startDate!).day.toString().padLeft(2, '0')}-${DateTime.parse(b.startDate!).month.toString().padLeft(2, '0')}-${DateTime.parse(b.startDate!).year}",
           });

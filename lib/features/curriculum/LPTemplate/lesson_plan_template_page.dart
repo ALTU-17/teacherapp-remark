@@ -2,17 +2,22 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:teacherapp/features/auth/providers/auth_provider.dart';
 
+import 'create_edit_lesson_plan_template.dart';
+import 'lesson_plan_template_api_service.dart';
 import 'models.dart';
 
-class LessonPlanTemplatePage extends StatefulWidget {
+class LessonPlanTemplatePage extends ConsumerStatefulWidget {
   const LessonPlanTemplatePage({super.key});
 
   @override
-  State<LessonPlanTemplatePage> createState() => _LessonPlanTemplatePageState();
+  ConsumerState<LessonPlanTemplatePage> createState() =>
+      _LessonPlanTemplatePageState();
 }
 
-class _LessonPlanTemplatePageState extends State<LessonPlanTemplatePage>
+class _LessonPlanTemplatePageState extends ConsumerState<LessonPlanTemplatePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -30,6 +35,9 @@ class _LessonPlanTemplatePageState extends State<LessonPlanTemplatePage>
 
   @override
   Widget build(BuildContext context) {
+    final auth = ref.watch(authProvider).requireValue;
+    final regId = auth.regId ?? '';
+
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -69,9 +77,9 @@ class _LessonPlanTemplatePageState extends State<LessonPlanTemplatePage>
         ),
         body: TabBarView(
           controller: _tabController,
-          children: const [
-            _TemplateManageTab(),
-            _TemplateBrowseTab(),
+          children: [
+            _TemplateManageTab(regId: regId),
+            _TemplateBrowseTab(regId: regId),
           ],
         ),
       ),
@@ -79,58 +87,188 @@ class _LessonPlanTemplatePageState extends State<LessonPlanTemplatePage>
   }
 }
 
-
 class _TemplateManageTab extends StatefulWidget {
-  const _TemplateManageTab();
+  final String regId;
+
+  const _TemplateManageTab({required this.regId});
 
   @override
   State<_TemplateManageTab> createState() => _TemplateManageTabState();
 }
 
 class _TemplateManageTabState extends State<_TemplateManageTab> {
+  final LessonPlanTemplateApiService _apiService =
+      LessonPlanTemplateApiService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isLoading = false;
+  String? _error;
+  List<TemplateRecord> _records = [];
 
-  // Fixed column widths
-  static const double _wSr = 60;
-  static const double _wClass = 90;
-  static const double _wSubject = 80;
-  static const double _wChapter = 120;
+  static const double _wSr = 50;
+  static const double _wClass = 50;
+  static const double _wSubject = 100;
+  static const double _wChapter = 150;
   static const double _wEdit = 70;
   static const double _wDelete = 70;
 
-  double get _tableWidth =>
-      _wSr + _wClass + _wSubject + _wChapter + _wEdit + _wDelete;
-
-  // TODO: replace with API data
-  List<TemplateRecord> _records = [
-    TemplateRecord(templateId: 1, className: '1', subject: 'English', chapter: 'Test Chapter', hasTemplate: false),
-    TemplateRecord(templateId: 2, className: '8', subject: 'English', chapter: 'The Wit that Won Hearts', hasTemplate: false),
-    TemplateRecord(templateId: 3, className: '6', subject: 'English', chapter: "A FRIEND'S PRAYER", hasTemplate: false),
-    TemplateRecord(templateId: 4, className: '2', subject: 'Maths', chapter: 'Subtraction', hasTemplate: true),
-    TemplateRecord(templateId: 5, className: '9', subject: 'English', chapter: 'test', hasTemplate: false),
-    TemplateRecord(templateId: 6, className: '10', subject: 'Games', chapter: 'demo test', hasTemplate: false),
-    TemplateRecord(templateId: 7, className: '5', subject: 'Games', chapter: 'test', hasTemplate: false),
-    TemplateRecord(templateId: 8, className: '2', subject: 'Maths', chapter: 'new', hasTemplate: false),
-    TemplateRecord(templateId: 9, className: 'Nursery', subject: 'English', chapter: 'Testing Chapter', hasTemplate: false),
-  ];
+  double get _tablePixelWidth =>
+      _wSr.w +
+      _wClass.w +
+      _wSubject.w +
+      _wChapter.w +
+      _wEdit.w +
+      _wDelete.w +
+      4.w;
 
   List<TemplateRecord> get _filtered {
     if (_searchQuery.isEmpty) return _records;
     final q = _searchQuery.toLowerCase();
     return _records
-        .where((r) =>
-    r.className.toLowerCase().contains(q) ||
-        r.subject.toLowerCase().contains(q) ||
-        r.chapter.toLowerCase().contains(q))
+        .where((record) =>
+            record.className.toLowerCase().contains(q) ||
+            record.subject.toLowerCase().contains(q) ||
+            record.chapter.toLowerCase().contains(q))
         .toList();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecords();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecords() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final records = await _apiService.getTemplateList();
+      if (!mounted) return;
+      setState(() => _records = records);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _openEdit(TemplateRecord record) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    TemplateEditDetailsResult details;
+    try {
+      details = await _apiService.getTemplateById(
+        classId: record.classId,
+        subjectId: record.subjectId,
+        chapterId: record.chapterId,
+        templateId: record.templateId,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(e.toString(), false);
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LessonPlanTemplateFormScreen(
+          mode: TemplateFormMode.edit,
+          classId: record.classId,
+          subjectId: record.subjectId,
+          chapterId: record.chapterId,
+          regId: record.regId == 0 ? widget.regId : record.regId.toString(),
+          className: record.className,
+          subject: record.subject,
+          chapter: record.chapter,
+          templateId: details.templateId,
+          existingDetails: details.details,
+        ),
+      ),
+    );
+    if (changed == true) _loadRecords();
+  }
+
+  Future<void> _deleteTemplate(TemplateRecord record) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete Lesson Plan Template'),
+          content: Text(
+            'Delete template for ${record.className} - ${record.subject} - ${record.chapter}?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final message =
+          await _apiService.deleteTemplate(templateId: record.templateId);
+      if (!mounted) return;
+      setState(() {
+        _records.removeWhere(
+          (item) => item.templateId == record.templateId,
+        );
+      });
+      _showSnack(message, true);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(e.toString(), false);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnack(String message, bool ok) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: ok ? Colors.green.shade700 : Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+      ),
+    );
   }
 
   @override
@@ -140,44 +278,47 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
         padding: EdgeInsets.all(12.w),
         child: Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           child: Padding(
             padding: EdgeInsets.all(12.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ── Header ─────────────────────────────
-                Text(
-                  'Lesson Plan Template',
-                  style: TextStyle(
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade800,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Lesson Plan Template',
+                        style: TextStyle(
+                          fontSize: 15.sp,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                    ),
+                    // IconButton(
+                    //   onPressed: _isLoading ? null : _loadRecords,
+                    //   icon: Icon(Icons.refresh, size: 20.w),
+                    //   tooltip: 'Refresh',
+                    // ),
+                  ],
+                ),
+                SizedBox(height: 8.h),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search class, subject or chapter',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.r),
+                    ),
                   ),
+                  onChanged: (value) => setState(() => _searchQuery = value),
                 ),
                 SizedBox(height: 10.h),
-
-                // ── Table (fills remaining space) ──────
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : _filtered.isEmpty
-                      ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.storage_outlined,
-                            size: 40.w, color: Colors.black26),
-                        SizedBox(height: 8.h),
-                        Text('No data available in table',
-                            style: TextStyle(
-                                fontSize: 13.sp,
-                                color: Colors.black38)),
-                      ],
-                    ),
-                  )
-                      : _buildScrollableTable(),
-                ),
+                Expanded(child: _buildContent()),
               ],
             ),
           ),
@@ -186,15 +327,60 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
     );
   }
 
-  /// Horizontal + vertical scroll for the table
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 40.w, color: Colors.red.shade700),
+            SizedBox(height: 8.h),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.sp, color: Colors.black54),
+            ),
+            SizedBox(height: 12.h),
+            // ElevatedButton.icon(
+            //   onPressed: _loadRecords,
+            //   icon: const Icon(Icons.refresh),
+            //   label: const Text('Retry'),
+            // ),
+          ],
+        ),
+      );
+    }
+
+    if (_filtered.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.storage_outlined, size: 40.w, color: Colors.black26),
+            SizedBox(height: 8.h),
+            Text(
+              'No data available in table',
+              style: TextStyle(fontSize: 13.sp, color: Colors.black38),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildScrollableTable();
+  }
+
   Widget _buildScrollableTable() {
     return Scrollbar(
-      // optional: outer scrollbar for horizontal
       thumbVisibility: true,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: _tableWidth.w,
+          width: _tablePixelWidth,
           child: Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
@@ -203,10 +389,7 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
             clipBehavior: Clip.hardEdge,
             child: Column(
               children: [
-                // Header (fixed at top)
                 _buildTableHeader(),
-
-                // Rows scroll vertically
                 Expanded(
                   child: Scrollbar(
                     thumbVisibility: true,
@@ -215,7 +398,8 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
                         children: _filtered
                             .asMap()
                             .entries
-                            .map((e) => _buildTableRow(e.key + 1, e.value))
+                            .map((entry) =>
+                                _buildTableRow(entry.key + 1, entry.value))
                             .toList(),
                       ),
                     ),
@@ -235,8 +419,8 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
       padding: EdgeInsets.symmetric(vertical: 12.h),
       child: Row(
         children: [
-          _headerCell('Sr. No', _wSr),
-          _headerCell('Class', _wClass),
+          _headerCellClass('Sr. No', _wSr),
+          _headerCellClass('Class', _wClass),
           _headerCell('Subject', _wSubject),
           _headerCell('Chapter', _wChapter),
           _headerCell('Edit', _wEdit, center: true),
@@ -246,6 +430,25 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
     );
   }
 
+  Widget _headerCellClass(String text, double width, {bool center = false}) {
+    return SizedBox(
+      width: width.w,
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 0.w),
+        child: Text(
+          text,
+          textAlign: center ? TextAlign.center : TextAlign.start,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          style: TextStyle(
+            fontSize: 12.5.sp,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey.shade800,
+          ),
+        ),
+      ),
+    );
+  }
   Widget _headerCell(String text, double width, {bool center = false}) {
     return SizedBox(
       width: width.w,
@@ -266,7 +469,9 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
     );
   }
 
-  Widget _buildTableRow(int srNo, TemplateRecord r) {
+  Widget _buildTableRow(int srNo, TemplateRecord record) {
+    final isPublished = record.publish.toUpperCase() == 'Y';
+
     return Container(
       padding: EdgeInsets.symmetric(vertical: 12.h),
       decoration: BoxDecoration(
@@ -275,40 +480,36 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
       child: Row(
         children: [
           _bodyCell('$srNo', _wSr),
-          _bodyCell(r.className, _wClass),
-          _bodyCell(r.subject, _wSubject),
-          _bodyCell(r.chapter, _wChapter, maxLines: 2),
+          _bodyCell(record.className, _wClass),
+          _bodyCell(record.subject, _wSubject),
+          _bodyCell(record.chapter, _wChapter, maxLines: 2),
           SizedBox(
             width: _wEdit.w,
-            child: r.hasTemplate
-                ? Center(
-              child: IconButton(
-                onPressed: () {
-                  // TODO: navigate to Edit Template
-                },
-                icon: Icon(Icons.edit_outlined,
-                    size: 18.w, color: Colors.blue.shade700),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            )
-                : const SizedBox.shrink(),
+            child: Center(
+              child: isPublished
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      onPressed: () => _openEdit(record),
+                      icon: Icon(Icons.edit_outlined,
+                          size: 18.w, color: Colors.blue.shade700),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+            ),
           ),
           SizedBox(
             width: _wDelete.w,
-            child: r.hasTemplate
-                ? Center(
-              child: IconButton(
-                onPressed: () {
-                  setState(() => _records.remove(r));
-                },
-                icon: Icon(Icons.delete_outline_rounded,
-                    size: 18.w, color: Colors.red.shade700),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-            )
-                : const SizedBox.shrink(),
+            child: Center(
+              child: isPublished
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      onPressed: () => _deleteTemplate(record),
+                      icon: Icon(Icons.delete_outline_rounded,
+                          size: 18.w, color: Colors.red.shade700),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+            ),
           ),
         ],
       ),
@@ -331,24 +532,109 @@ class _TemplateManageTabState extends State<_TemplateManageTab> {
   }
 }
 
-
 class _TemplateBrowseTab extends StatefulWidget {
-  const _TemplateBrowseTab();
+  final String regId;
+
+  const _TemplateBrowseTab({required this.regId});
 
   @override
   State<_TemplateBrowseTab> createState() => _TemplateBrowseTabState();
 }
 
 class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
-  // TODO: load from APIs
-  final List<String> _classes = ['1', '2', '4', '5', '6', '8', '9', '10', 'Nursery'];
-  final List<String> _subjects = ['English', 'Maths', 'Games', 'History'];
-  final List<String> _chapters = ['Subtraction', 'Test Chapter', 'new', 'test'];
+  final LessonPlanTemplateApiService _apiService =
+      LessonPlanTemplateApiService();
 
-  String? _selectedClass;
-  String? _selectedSubject;
-  String? _selectedChapter;
-  bool _isLoading = false;
+  List<TemplateClass> _classes = [];
+  List<TemplateSubject> _subjects = [];
+  List<TemplateChapter> _chapters = [];
+
+  TemplateClass? _selectedClass;
+  TemplateSubject? _selectedSubject;
+  TemplateChapter? _selectedChapter;
+
+  bool _isLoadingClasses = false;
+  bool _isLoadingSubjects = false;
+  bool _isLoadingChapters = false;
+  bool _isBrowsing = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClasses();
+  }
+
+  Future<void> _loadClasses() async {
+    if (widget.regId.isEmpty) {
+      setState(() => _error = 'Teacher id missing');
+      return;
+    }
+
+    setState(() {
+      _isLoadingClasses = true;
+      _error = null;
+    });
+
+    try {
+      final classes = await _apiService.getClasses(teacherId: widget.regId);
+      if (!mounted) return;
+      setState(() => _classes = classes);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingClasses = false);
+    }
+  }
+
+  Future<void> _loadSubjects(TemplateClass selectedClass) async {
+    setState(() {
+      _isLoadingSubjects = true;
+      _error = null;
+      _selectedSubject = null;
+      _selectedChapter = null;
+      _subjects = [];
+      _chapters = [];
+    });
+
+    try {
+      final subjects =
+          await _apiService.getSubjects(classId: selectedClass.classId);
+      if (!mounted) return;
+      setState(() => _subjects = subjects);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingSubjects = false);
+    }
+  }
+
+  Future<void> _loadChapters(TemplateSubject subject) async {
+    if (_selectedClass == null) return;
+
+    setState(() {
+      _isLoadingChapters = true;
+      _error = null;
+      _selectedChapter = null;
+      _chapters = [];
+    });
+
+    try {
+      final chapters = await _apiService.getChapters(
+        classId: _selectedClass!.classId,
+        subjectId: subject.subjectId,
+      );
+      if (!mounted) return;
+      setState(() => _chapters = chapters);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoadingChapters = false);
+    }
+  }
 
   Future<void> _browse() async {
     if (_selectedClass == null ||
@@ -358,27 +644,54 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
       return;
     }
 
-    setState(() => _isLoading = true);
-    try {
-      // TODO: call API → check if template exists for this class+subject+chapter
-      final bool templateExists = false; // from API
+    setState(() {
+      _isBrowsing = true;
+      _error = null;
+    });
 
+    try {
+      final result = await _apiService.getTemplate(
+        classId: _selectedClass!.classId,
+        subjectId: _selectedSubject!.subjectId,
+        chapterId: _selectedChapter!.chapterId,
+        regId: widget.regId,
+      );
       if (!mounted) return;
-      if (templateExists) {
-        // Navigator.push(context, MaterialPageRoute(
-        //   builder: (_) => LessonPlanTemplateEditScreen(record: ...),
-        // ));
-      } else {
-        // Navigator.push(context, MaterialPageRoute(
-        //   builder: (_) => LessonPlanTemplateCreateScreen(
-        //     className: _selectedClass!,
-        //     subject: _selectedSubject!,
-        //     chapter: _selectedChapter!,
-        //   ),
-        // ));
-      }
+
+      final editDetails = result.hasTemplate
+          ? await _apiService.getTemplateById(
+              classId: _selectedClass!.classId,
+              subjectId: _selectedSubject!.subjectId,
+              chapterId: _selectedChapter!.chapterId,
+              templateId: result.details.first.templateId,
+            )
+          : null;
+      if (!mounted) return;
+
+      await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LessonPlanTemplateFormScreen(
+            mode: result.hasTemplate
+                ? TemplateFormMode.edit
+                : TemplateFormMode.create,
+            classId: _selectedClass!.classId,
+            subjectId: _selectedSubject!.subjectId,
+            chapterId: _selectedChapter!.chapterId,
+            regId: widget.regId,
+            className: _selectedClass!.className,
+            subject: _selectedSubject!.name,
+            chapter: _selectedChapter!.name,
+            templateId: editDetails?.templateId,
+            existingDetails: editDetails?.details ?? const [],
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack(e.toString(), false);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isBrowsing = false);
     }
   }
 
@@ -394,7 +707,8 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
         backgroundColor: ok ? Colors.green.shade700 : Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
         margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
       ),
     );
   }
@@ -406,7 +720,8 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
         padding: EdgeInsets.all(14.w),
         child: Card(
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
           child: Padding(
             padding: EdgeInsets.all(16.w),
             child: Column(
@@ -424,82 +739,40 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
                           color: Colors.blue.shade700, size: 20.w),
                     ),
                     SizedBox(width: 10.w),
-                    Text(
-                      'Lesson Plan Template',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16.h),
-                Row(
-                  children: [
                     Expanded(
-                      child: _styledDropdown(
-                        label: 'Class',
-                        hint: 'Select',
-                        value: _selectedClass,
-                        items: _classes,
-                        onChanged: (v) => setState(() => _selectedClass = v),
-                        required: true,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _styledDropdown(
-                        label: 'Subject',
-                        hint: 'Select',
-                        value: _selectedSubject,
-                        items: _subjects,
-                        onChanged: (v) => setState(() => _selectedSubject = v),
-                        required: true,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Expanded(
-                      child: _styledDropdown(
-                        label: 'Chapter',
-                        hint: 'Select',
-                        value: _selectedChapter,
-                        items: _chapters,
-                        onChanged: (v) => setState(() => _selectedChapter = v),
-                        required: true,
-                      ),
-                    ),
-                    SizedBox(width: 12.w),
-                    Padding(
-                      padding: EdgeInsets.only(top: 22.h),
-                      child: SizedBox(
-                        height: 48.h,
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _browse,
-                          icon: _isLoading
-                              ? SizedBox(
-                            width: 18.w,
-                            height: 18.h,
-                            child: const CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                              : Icon(Icons.search_rounded, size: 18.w),
-                          label: Text(_isLoading ? 'Loading...' : 'Browse'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade600,
-                            foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 24.w),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10.r)),
-                          ),
+                      child: Text(
+                        'Lesson Plan Template',
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade800,
                         ),
                       ),
                     ),
+                    if (_isLoadingClasses)
+                      SizedBox(
+                        width: 20.w,
+                        height: 20.w,
+                        child: const CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    // else
+                    //   IconButton(
+                    //     onPressed: _loadClasses,
+                    //     icon: const Icon(Icons.refresh),
+                    //     tooltip: 'Refresh classes',
+                    //   ),
                   ],
                 ),
+                if (_error != null) ...[
+                  SizedBox(height: 10.h),
+                  Text(
+                    _error!,
+                    style:
+                        TextStyle(color: Colors.red.shade700, fontSize: 12.sp),
+                  ),
+                ],
+                SizedBox(height: 16.h),
+                _buildBrowseControls(),
               ],
             ),
           ),
@@ -508,12 +781,124 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
     );
   }
 
-  Widget _styledDropdown({
+  Widget _buildBrowseControls() {
+    final classDropdown = _styledDropdown<TemplateClass>(
+      label: 'Class',
+      hint: _isLoadingClasses ? 'Loading...' : 'Select',
+      value: _selectedClass,
+      items: _classes,
+      itemLabel: (item) => item.className,
+      onChanged: _isLoadingClasses
+          ? null
+          : (value) {
+              setState(() => _selectedClass = value);
+              if (value != null) _loadSubjects(value);
+            },
+      required: true,
+    );
+
+    final subjectDropdown = _styledDropdown<TemplateSubject>(
+      label: 'Subject',
+      hint: _isLoadingSubjects ? 'Loading...' : 'Select',
+      value: _selectedSubject,
+      items: _subjects,
+      itemLabel: (item) => item.name,
+      onChanged: _selectedClass == null || _isLoadingSubjects
+          ? null
+          : (value) {
+              setState(() => _selectedSubject = value);
+              if (value != null) _loadChapters(value);
+            },
+      required: true,
+    );
+
+    final chapterDropdown = _styledDropdown<TemplateChapter>(
+      label: 'Chapter',
+      hint: _isLoadingChapters ? 'Loading...' : 'Select',
+      value: _selectedChapter,
+      items: _chapters,
+      itemLabel: (item) => item.name,
+      onChanged: _selectedSubject == null || _isLoadingChapters
+          ? null
+          : (value) => setState(() => _selectedChapter = value),
+      required: true,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 620.w;
+
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              classDropdown,
+              SizedBox(height: 12.h),
+              subjectDropdown,
+              SizedBox(height: 12.h),
+              chapterDropdown,
+              SizedBox(height: 16.h),
+              _browseButton(fullWidth: true),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(child: classDropdown),
+            SizedBox(width: 12.w),
+            Expanded(child: subjectDropdown),
+            SizedBox(width: 12.w),
+            Expanded(child: chapterDropdown),
+            SizedBox(width: 12.w),
+            _browseButton(fullWidth: false),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _browseButton({required bool fullWidth}) {
+    return SizedBox(
+      width: fullWidth ? double.infinity : 160.w,
+      height: 48.h,
+      child: ElevatedButton.icon(
+        onPressed: _isBrowsing ? null : _browse,
+        icon: _isBrowsing
+            ? SizedBox(
+                width: 18.w,
+                height: 18.w,
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Icon(Icons.search_rounded, size: 20.w),
+        label: Text(
+          _isBrowsing ? 'Loading...' : 'Browse',
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue.shade600,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(horizontal: 18.w),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10.r),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _styledDropdown<T>({
     required String label,
     required String hint,
-    required String? value,
-    required List<String> items,
-    required ValueChanged<String?> onChanged,
+    required T? value,
+    required List<T> items,
+    required String Function(T item) itemLabel,
+    required ValueChanged<T?>? onChanged,
     bool required = false,
   }) {
     return Column(
@@ -528,7 +913,12 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
               color: Colors.grey.shade800,
             ),
             children: required
-                ? [TextSpan(text: ' *', style: TextStyle(color: Colors.red.shade700))]
+                ? [
+                    TextSpan(
+                      text: ' *',
+                      style: TextStyle(color: Colors.red.shade700),
+                    )
+                  ]
                 : [],
           ),
         ),
@@ -539,22 +929,28 @@ class _TemplateBrowseTabState extends State<_TemplateBrowseTab> {
             borderRadius: BorderRadius.circular(10.r),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          child: DropdownButtonFormField<String>(
-            value: value,
+          child: DropdownButtonFormField<T>(
+            initialValue: value,
             isExpanded: true,
-            hint: Text(hint,
-                style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade500)),
+            hint: Text(
+              hint,
+              style: TextStyle(fontSize: 13.sp, color: Colors.grey.shade500),
+            ),
             decoration: InputDecoration(
               border: InputBorder.none,
               contentPadding:
-              EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
+                  EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
               isDense: true,
             ),
             items: items
-                .map((e) => DropdownMenuItem(
-              value: e,
-              child: Text(e, style: TextStyle(fontSize: 13.sp)),
-            ))
+                .map((item) => DropdownMenuItem<T>(
+                      value: item,
+                      child: Text(
+                        itemLabel(item),
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 13.sp),
+                      ),
+                    ))
                 .toList(),
             onChanged: onChanged,
             icon: Icon(Icons.keyboard_arrow_down_rounded,

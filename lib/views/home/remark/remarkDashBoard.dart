@@ -669,7 +669,7 @@ class RemarkNoteCard extends HookConsumerWidget {
                 // Divider(color: Colors.grey.shade200),
                 // SizedBox(height: 8.h),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
                     // View button always visible
                     _buildActionButton(

@@ -27,7 +27,12 @@ import '../../../common/textSanitizer.dart';
 
 class EditAddHomeWorkView extends HookConsumerWidget {
   final Homework? h;
-  const EditAddHomeWorkView(this.h, {super.key});
+  final List<PlatformFile> initialFiles;
+  const EditAddHomeWorkView(
+    this.h, {
+    this.initialFiles = const [],
+    super.key,
+  });
 
   // 👇 Max allowed attachment size: 5 MB
   static const int _maxAttachmentBytes = 5 * 1024 * 1024;
@@ -108,6 +113,16 @@ class EditAddHomeWorkView extends HookConsumerWidget {
 
       return accepted;
     }
+
+    useEffect(() {
+      if (h == null && initialFiles.isNotEmpty && pickedFiles.value.isEmpty) {
+        final validFiles = _filterValidFiles(initialFiles);
+        if (validFiles.isNotEmpty) {
+          pickedFiles.value = validFiles;
+        }
+      }
+      return null;
+    }, [initialFiles]);
 
     void _pickFiles() async {
       try {
@@ -605,6 +620,63 @@ class EditAddHomeWorkView extends HookConsumerWidget {
             ),
           ),
           _buildAttachmentNote(),
+          if (pickedFiles.value.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Files to upload (${pickedFiles.value.length}):",
+                      style: TextStyle(
+                          fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                  ...pickedFiles.value.map((file) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            _getFileIcon(file.name),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    file.name,
+                                    style: TextStyle(
+                                        fontSize: 14.sp,
+                                        fontWeight: FontWeight.w500),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    _formatFileSize(file.size),
+                                    style: TextStyle(
+                                        fontSize: 12.sp,
+                                        color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete,
+                                  color: Colors.red, size: 20),
+                              onPressed: () {
+                                pickedFiles.value = pickedFiles.value
+                                    .where((f) => f.name != file.name)
+                                    .toList();
+                              },
+                              tooltip: "Remove",
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )).toList(),
+                ],
+              ),
+            ),
         ],
       );
     }

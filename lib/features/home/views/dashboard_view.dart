@@ -257,6 +257,12 @@ class _DashboardViewState extends ConsumerState<DashboardView>
         'page': LeaveApplicationDashboardRoute().location
       },
       {
+        'icon': 'assets/uploadmarks.png',
+        'label': 'Enter Marks',
+        'isNew': true,
+        'page': UploadMarksRoute().location
+      },
+      {
         'icon': 'assets/user_check.jpeg',
         'label': 'Teacher ID card',
         'isNew': true,
@@ -535,6 +541,8 @@ class _DashboardViewState extends ConsumerState<DashboardView>
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider).requireValue;
     final sheetController = DraggableScrollableController();
+    final String sex = auth.teacherDetails?.sex ?? 'female';
+    print('auth.teacherDetails?.sex : ${auth.teacherDetails?.sex}');
 
     getVersion(context);
 
@@ -590,11 +598,17 @@ class _DashboardViewState extends ConsumerState<DashboardView>
                         ),
                         child: Row(
                           children: [
-                            Image.asset(
-                              'assets/girl.png',
-                              width: 50,
-                              height: 60,
-                            ),
+                        sex == 'female'
+                          ? Image.asset(
+                          'assets/girl.png',
+                          width: 50,
+                          height: 60,
+                        )
+                            : Image.asset(
+                        'assets/boy.png',
+                        width: 50,
+                        height: 60,
+                      ),
                             const SizedBox(width: 15),
                             Expanded(
                               child: Column(

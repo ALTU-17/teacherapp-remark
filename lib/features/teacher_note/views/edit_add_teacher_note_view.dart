@@ -27,7 +27,12 @@ import '../models/models.dart';
 
 class EditAddTeacherNoteView extends HookConsumerWidget {
   final Note? note;
-  const EditAddTeacherNoteView({this.note, super.key});
+  final List<PlatformFile> initialFiles;
+  const EditAddTeacherNoteView({
+    this.note,
+    this.initialFiles = const [],
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,6 +42,7 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
     final selectedSubject = useState<MultiSub?>(null);
     final selectAll = useState<bool>(false);
     final uploadedFiles = useState<List<String>>([]);
+    final pendingSharedFiles = useState<List<PlatformFile>>(initialFiles);
     final isUploading = useState<bool>(false);
     final isDownloading = useState<bool>(false);
 
@@ -63,7 +69,7 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
 
     // File upload function
     Future<void> _uploadFiles(List<PlatformFile> filesToUpload) async {
-      if (selectedClass.value?.isEmpty == true) {
+      if (selectedClass.value == null || selectedClass.value!.isEmpty) {
         _showSnackBar(context, 'Please select a class first');
         return;
       }
@@ -135,9 +141,26 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
       }
     }
 
+    useEffect(() {
+      final hasClass = selectedClass.value?.isNotEmpty ?? false;
+      if (note == null &&
+          hasClass &&
+          pendingSharedFiles.value.isNotEmpty &&
+          !isUploading.value) {
+        final files = pendingSharedFiles.value;
+        pendingSharedFiles.value = [];
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            _uploadFiles(files);
+          }
+        });
+      }
+      return null;
+    }, [selectedClass.value, pendingSharedFiles.value, isUploading.value]);
+
     // File picking and automatic upload
     Future<void> _pickAndUploadFiles() async {
-      if (selectedClass.value?.isEmpty == true) {
+      if (selectedClass.value == null || selectedClass.value!.isEmpty) {
         _showSnackBar(context, 'Please select a class first');
         return;
       }
@@ -145,8 +168,7 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
       try {
         FilePickerResult? result = await FilePicker.platform.pickFiles(
           allowMultiple: true,
-          type: FileType.custom,
-          allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'txt'],
+          type: FileType.any,
         );
 
         if (result != null && result.files.isNotEmpty) {
@@ -235,12 +257,19 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
       _showSnackBar(context, "Removed $filename from upload list");
     }
 
+    void _deletePendingSharedFile(String filename) {
+      pendingSharedFiles.value =
+          pendingSharedFiles.value.where((f) => f.name != filename).toList();
+      _showSnackBar(context, "Removed $filename from upload list");
+    }
+
     void resetForm() {
       fromKey.currentState?.reset();
       selectedClass.value = null;
       selectedSubject.value = null;
       selectAll.value = false;
       uploadedFiles.value = [];
+      pendingSharedFiles.value = [];
     }
 
     // Build class selection widget
@@ -360,6 +389,45 @@ class EditAddTeacherNoteView extends HookConsumerWidget {
                         IconButton(
                           icon: Icon(Icons.delete, color: Colors.red, size: 18),
                           onPressed: () => _deleteFile(filename),
+                          tooltip: "Remove from list",
+                        ),
+                      ],
+                    ),
+                  )).toList(),
+                ],
+              ),
+            ),
+          if (pendingSharedFiles.value.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Ready to upload (${pendingSharedFiles.value.length}):",
+                      style: TextStyle(
+                          fontSize: 14.sp, fontWeight: FontWeight.bold)),
+                  Text(
+                    "Select class to upload shared files.",
+                    style: TextStyle(fontSize: 12.sp, color: Colors.grey),
+                  ),
+                  ...pendingSharedFiles.value.map((file) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.insert_drive_file,
+                            size: 18, color: Colors.blueGrey),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            file.name,
+                            style: TextStyle(fontSize: 13.sp),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete,
+                              color: Colors.red, size: 18),
+                          onPressed: () => _deletePendingSharedFile(file.name),
                           tooltip: "Remove from list",
                         ),
                       ],
